@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type Countdown = {
   id: string;
@@ -8,13 +9,22 @@ type Countdown = {
   target: string;
 };
 
-const DEFAULT: Countdown = {
-  id: "new-year-2027",
+const DEFAULT: Omit<Countdown, "id"> = {
   title: "2027",
   target: "2027-01-01",
 };
 
 const STORAGE_KEY = "little-days-countdowns";
+const CHECKED_KEY = "little-days-checked";
+
+function localDateKey() {
+  const date = new Date();
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
 
 function daysUntil(target: string) {
   const today = new Date();
@@ -31,68 +41,284 @@ function prettyDate(target: string) {
   }).format(new Date(target + "T00:00:00"));
 }
 
+function getLocalCountDowns(): Omit<Countdown, "id">[] {
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (!saved) return [DEFAULT];
+
+    const parsed = JSON.parse(saved) as Countdown[];
+    if (!Array.isArray(parsed) || !parsed.length) return [DEFAULT];
+
+    return parsed
+      .filter((item) => item && typeof item.title === "string" && typeof item.target === "string")
+      .map(({ title, target }) => ({ title, target }));
+  } catch {
+    return [DEFAULT];
+  }
+}
+
 export default function Home() {
-  const [countdowns, setCountdowns] = useState<Countdown[]>([DEFAULT]);
-  const [activeId, setActiveId] = useState(DEFAULT.id);
+  const supabase = useMemo(() => createClient(), []);
+  const [countdowns, setCountdowns] = useState<Countdown[]>([]);
+  const [activeId, setActiveId] = useState("");
   const [checked, setChecked] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  const active = countdowns.find((item) => item.id === activeId) ?? countdowns[0] ?? DEFAULT;
-  const remaining = daysUntil(active.target);
+  const active = countdowns.find((item) => item.id === activeId) ?? countdowns[0];
+  const remaining = active ? daysUntil(active.target) : 0;
   const today = new Date();
-  const targetYear = new Date(active.target + "T00:00:00").getFullYear();
+  const targetYear = active ? new Date(active.target + "T00:00:00").getFullYear() : today.getFullYear();
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as Countdown[];
-        if (Array.isArray(parsed) && parsed.length) {
-          setCountdowns(parsed);
-          setActiveId(parsed[0].id);
+    let cancelled = false;
+
+    async function load() {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+
+      if (!user) {
+        window.location.href = "/auth";
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("countdowns")
+        .select("id,title,target_date")
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        setToast(error.message);
+        setLoading(false);
+        return;
+      }
+
+      let rows = (data ?? []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        target: item.target_date,
+      }));
+
+      if (!rows.length) {
+        const localItems = getLocalCountDowns();
+        const { data: created, error: createError } = await supabase
+          .from("countdowns")
+          .insert(localItems.map((item) => ({
+            user_id: user.id,
+            title: item.title,
+            target_date: item.target,
+          })))
+          .select("id,title,target_date");
+
+        if (createError) {
+          setToast(createError.message);
+          setLoading(false);
+          return;
+        }
+
+        rows = (created ?? []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          target: item.target_date,
+        }));
+
+        if (window.localStorage.getItem(CHECKED_KEY) === localDateKey() && rows[0]) {
+          await supabase.from("check_ins").upsert(
+            {
+              countdown_id: rows[0].id,
+              user_id: user.id,
+              check_date: localDateKey(),
+            },
+            { onConflict: "countdown_id,check_date" },
+          );
         }
       }
-      setChecked(window.localStorage.getItem("little-days-checked") === new Date().toISOString().slice(0, 10));
-    } catch {
-      // Keep the app usable if storage is unavailable.
+
+      if (cancelled) return;
+
+      setCountdowns(rows);
+      setActiveId(rows[0]?.id ?? "");
+
+      if (rows[0]) {
+        const { data: checkIn } = await supabase
+          .from("check_ins")
+          .select("id")
+          .eq("countdown_id", rows[0].id)
+          .eq("check_date", localDateKey())
+          .maybeSingle();
+
+        if (!cancelled) setChecked(Boolean(checkIn));
+      }
+
+      setLoading(false);
     }
-  }, []);
 
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(countdowns));
-  }, [countdowns]);
+    load();
 
-  const pastFlowers = useMemo(() => Math.min(42, Math.max(8, 42 - Math.floor(remaining / 10))), [remaining]);
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
-  function toggleCheckin() {
-    const todayKey = new Date().toISOString().slice(0, 10);
+  const pastFlowers = useMemo(
+    () => Math.min(42, Math.max(8, 42 - Math.floor(remaining / 10))),
+    [remaining],
+  );
+
+  async function toggleCheckin() {
+    if (!active || busy) return;
+
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+    if (!user) return;
+
     const next = !checked;
-    setChecked(next);
+    setBusy(true);
+
     if (next) {
-      window.localStorage.setItem("little-days-checked", todayKey);
-      setToast("A little mark for today.");
+      const { error } = await supabase.from("check_ins").upsert(
+        {
+          countdown_id: active.id,
+          user_id: user.id,
+          check_date: localDateKey(),
+        },
+        { onConflict: "countdown_id,check_date" },
+      );
+
+      if (error) {
+        setToast(error.message);
+      } else {
+        setChecked(true);
+        window.localStorage.setItem(CHECKED_KEY, localDateKey());
+        setToast("A little mark for today.");
+      }
     } else {
-      window.localStorage.removeItem("little-days-checked");
-      setToast("Today is open again.");
+      const { error } = await supabase
+        .from("check_ins")
+        .delete()
+        .eq("countdown_id", active.id)
+        .eq("check_date", localDateKey());
+
+      if (error) {
+        setToast(error.message);
+      } else {
+        setChecked(false);
+        window.localStorage.removeItem(CHECKED_KEY);
+        setToast("Today is open again.");
+      }
     }
+
+    setBusy(false);
     window.setTimeout(() => setToast(""), 1800);
   }
 
-  function addCountdown(event: FormEvent<HTMLFormElement>) {
+  async function selectCountdown(id: string) {
+    setActiveId(id);
+
+    const { data: checkIn } = await supabase
+      .from("check_ins")
+      .select("id")
+      .eq("countdown_id", id)
+      .eq("check_date", localDateKey())
+      .maybeSingle();
+
+    setChecked(Boolean(checkIn));
+  }
+
+  async function addCountdown(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
     const form = new FormData(event.currentTarget);
     const title = String(form.get("title") || "").trim();
     const target = String(form.get("target") || "");
-    if (!title || !target) return;
+    if (!title || !target || busy) return;
 
-    const item = { id: crypto.randomUUID(), title, target };
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+    if (!user) return;
+
+    setBusy(true);
+
+    const { data, error } = await supabase
+      .from("countdowns")
+      .insert({
+        user_id: user.id,
+        title,
+        target_date: target,
+      })
+      .select("id,title,target_date")
+      .single();
+
+    if (error) {
+      setToast(error.message);
+      setBusy(false);
+      return;
+    }
+
+    const item = {
+      id: data.id,
+      title: data.title,
+      target: data.target_date,
+    };
+
     setCountdowns((current) => [...current, item]);
     setActiveId(item.id);
+    setChecked(false);
     setShowAdd(false);
     event.currentTarget.reset();
+    setBusy(false);
     setToast("A new little day was planted.");
     window.setTimeout(() => setToast(""), 1800);
+  }
+
+  async function deleteCountdown(id: string) {
+    if (busy || countdowns.length <= 1) return;
+
+    const item = countdowns.find((countdown) => countdown.id === id);
+    if (!item || !window.confirm(`Remove “${item.title}” from your garden?`)) return;
+
+    setBusy(true);
+
+    const { error } = await supabase.from("countdowns").delete().eq("id", id);
+
+    if (error) {
+      setToast(error.message);
+      setBusy(false);
+      return;
+    }
+
+    const remainingItems = countdowns.filter((countdown) => countdown.id !== id);
+    setCountdowns(remainingItems);
+
+    if (id === activeId) {
+      setActiveId(remainingItems[0]?.id ?? "");
+      setChecked(false);
+    }
+
+    setBusy(false);
+    setToast("That little day was removed.");
+    window.setTimeout(() => setToast(""), 1800);
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    window.location.href = "/auth";
+  }
+
+  if (loading) {
+    return (
+      <main className="app-shell">
+        <div className="app-frame">
+          <div className="card loading-card">Growing your little garden…</div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!active) {
+    return null;
   }
 
   return (
@@ -173,7 +399,7 @@ export default function Home() {
                 <strong>Did you notice today?</strong>
                 <p>A tiny check-in is enough. There is nothing to write.</p>
               </div>
-              <button className={`check-button ${checked ? "checked" : ""}`} onClick={toggleCheckin}>
+              <button className={`check-button ${checked ? "checked" : ""}`} onClick={toggleCheckin} disabled={busy}>
                 {checked ? "✓ Marked today" : "Mark today"}
               </button>
             </div>
@@ -187,11 +413,15 @@ export default function Home() {
 
             <div className="list">
               {countdowns.map((item) => (
-                <button
+                <div
                   key={item.id}
-                  className="countdown-row"
-                  onClick={() => setActiveId(item.id)}
-                  style={{ border: 0, background: "transparent", textAlign: "left", width: "100%" }}
+                  className={`countdown-row ${item.id === active.id ? "selected" : ""}`}
+                  onClick={() => selectCountdown(item.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") selectCountdown(item.id);
+                  }}
                 >
                   <span className="row-flower">✿</span>
                   <span className="row-main">
@@ -202,7 +432,19 @@ export default function Home() {
                     {daysUntil(item.target)}
                     <small>days</small>
                   </span>
-                </button>
+                  {countdowns.length > 1 && (
+                    <button
+                      className="row-delete"
+                      aria-label={`Remove ${item.title}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteCountdown(item.id);
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
 
@@ -211,9 +453,11 @@ export default function Home() {
                 <form className="add-form" onSubmit={addCountdown}>
                   <input className="input" name="title" placeholder="What are you waiting for?" required />
                   <input className="input" name="target" type="date" required />
-                  <button className="primary-button" type="submit">Plant it</button>
+                  <button className="primary-button" type="submit" disabled={busy}>
+                    {busy ? "Planting…" : "Plant it"}
+                  </button>
                 </form>
-                <div className="helper">For now, Little Days keeps your data on this device. Cloud sync is wired through Supabase next.</div>
+                <div className="helper">Your little days now live in your private Supabase garden and follow your account.</div>
               </div>
             )}
           </article>
@@ -221,6 +465,7 @@ export default function Home() {
 
         <footer className="footer">
           <span>Little Days · a small ritual around time</span>
+          <button className="footer-signout" onClick={signOut}>Sign out</button>
           <span>Made for two people who keep choosing each other.</span>
         </footer>
       </div>
