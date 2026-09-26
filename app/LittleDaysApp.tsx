@@ -120,6 +120,8 @@ export default function LittleDaysApp() {
   const [habitLogs, setHabitLogs] = useState<Record<string, string[]>>({});
   const [markedDates, setMarkedDates] = useState<string[]>([]);
   const [activeId, setActiveId] = useState("");
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [editingDetail, setEditingDetail] = useState(false);
   const [view, setView] = useState<View>("today");
   const [yearView, setYearView] = useState<YearView>("remaining");
   const [showAdd, setShowAdd] = useState(false);
@@ -463,6 +465,38 @@ export default function LittleDaysApp() {
     }
   }
 
+
+
+  async function updateItem(id: string, title: string, target: string, note: string, category: string) {
+    if (busy || !title.trim() || !target) return;
+    const previous = items;
+    const next = items.map((item) => item.id === id ? { ...item, title: title.trim(), target, note: note.trim(), category } : item);
+    setItems(next);
+    saveJson(STORAGE_KEY, next);
+    setBusy(true);
+
+    try {
+      const { error } = await supabase.from("time_items")
+        .update({ title: title.trim(), target_date: target, note: note.trim(), category })
+        .eq("id", id);
+      if (error) {
+        // Legacy countdowns do not have the richer fields; retain the local representation.
+        const { error: fallbackError } = await supabase.from("countdowns")
+          .update({ title: title.trim(), target_date: target })
+          .eq("id", id);
+        if (fallbackError) throw error;
+      }
+      setEditingDetail(false);
+      flash("Little day updated.");
+    } catch (error) {
+      setItems(previous);
+      saveJson(STORAGE_KEY, previous);
+      flash(error instanceof Error ? error.message : "Could not update that little day.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function deleteItem(id: string) {
     if (busy || items.length <= 1) return;
     const item = items.find((entry) => entry.id === id);
@@ -642,7 +676,7 @@ export default function LittleDaysApp() {
               </div>
               <div className="ld-mini-grid">
                 {upcoming.slice(0, 3).map((item) => (
-                  <button className="ld-object-card" key={item.id} type="button" onClick={() => { setActiveId(item.id); go("ahead"); }}>
+                  <button className="ld-object-card" key={item.id} type="button" onClick={() => { setActiveId(item.id); setDetailId(item.id); }}>
                     <span className="ld-object-icon">{itemIcon(item)}</span>
                     <span><strong>{item.title}</strong><small>{daysUntil(item.target)} days · {shortDate(item.target)}</small></span>
                   </button>
@@ -678,19 +712,24 @@ export default function LittleDaysApp() {
           </section>
         )}
 
+
         {view === "ahead" && (
           <section className="ld-page">
-            <div className="ld-page-heading"><span className="ld-eyebrow">look forward</span><h1>Ahead</h1><p>Trips, birthdays, plans, deadlines — the little things waiting for you.</p><button className="ld-primary" type="button" onClick={() => openAdd("until")}>+ Keep a date</button></div>
+            <div className="ld-page-heading">
+              <span className="ld-eyebrow">look forward</span>
+              <h1>Ahead</h1>
+              <p>Trips, birthdays, plans, deadlines — the little things waiting for you.</p>
+              <button className="ld-primary" type="button" onClick={() => openAdd("until")}>+ Keep a date</button>
+            </div>
             <div className="ld-list">
               {upcoming.length === 0 && <div className="ld-empty-state"><span>✦</span><h2>Nothing ahead yet.</h2><p>Give yourself something to look forward to.</p><button className="ld-primary" onClick={() => openAdd("until")} type="button">Add a date</button></div>}
               {upcoming.map((item) => (
-                <article className={`ld-large-object ${activeId === item.id ? "selected" : ""}`} key={item.id}>
-                  <button type="button" className="ld-large-object-main" onClick={() => setActiveId(item.id)}>
+                <article className="ld-large-object" key={item.id}>
+                  <button type="button" className="ld-large-object-main" onClick={() => { setActiveId(item.id); setDetailId(item.id); }}>
                     <span className="ld-large-icon">{itemIcon(item)}</span>
                     <span><strong>{item.title}</strong><small>{prettyDate(item.target)}</small></span>
                     <span className="ld-large-value"><strong>{daysUntil(item.target)}</strong><small>days</small></span>
                   </button>
-                  {activeId === item.id && <div className="ld-detail"><span>counting down</span><strong>{daysUntil(item.target)} days until {item.title}</strong><p>{prettyDate(item.target)} · {item.note || "This little day can stay simple. Add a note when you want to remember why it matters."}</p><button type="button" className="ld-danger" onClick={() => deleteItem(item.id)}>Remove</button></div>}
                 </article>
               ))}
             </div>
@@ -699,23 +738,26 @@ export default function LittleDaysApp() {
 
         {view === "since" && (
           <section className="ld-page">
-            <div className="ld-page-heading"><span className="ld-eyebrow">look back</span><h1>Since</h1><p>Beginnings, anniversaries, firsts, and little memories that keep going.</p><button className="ld-primary" type="button" onClick={() => openAdd("since")}>+ Remember a day</button></div>
+            <div className="ld-page-heading">
+              <span className="ld-eyebrow">look back</span>
+              <h1>Since</h1>
+              <p>Beginnings, anniversaries, firsts, and little memories that keep going.</p>
+              <button className="ld-primary" type="button" onClick={() => openAdd("since")}>+ Remember a day</button>
+            </div>
             <div className="ld-list">
               {memories.length === 0 && <div className="ld-empty-state"><span>✿</span><h2>Nothing remembered yet.</h2><p>Add a day that started something.</p><button className="ld-primary" onClick={() => openAdd("since")} type="button">Remember a day</button></div>}
               {memories.map((item) => (
-                <article className={`ld-large-object ${activeId === item.id ? "selected" : ""}`} key={item.id}>
-                  <button type="button" className="ld-large-object-main" onClick={() => setActiveId(item.id)}>
+                <article className="ld-large-object" key={item.id}>
+                  <button type="button" className="ld-large-object-main" onClick={() => { setActiveId(item.id); setDetailId(item.id); }}>
                     <span className="ld-large-icon memory">{itemIcon(item)}</span>
                     <span><strong>{item.title}</strong><small>since {prettyDate(item.target)}</small></span>
                     <span className="ld-large-value"><strong>{daysSince(item.target)}</strong><small>days</small></span>
                   </button>
-                  {activeId === item.id && <div className="ld-detail"><span>remembered</span><strong>{daysSince(item.target)} days since {item.title}</strong><p>{prettyDate(item.target)} · {item.note || "A day does not need a note to be worth keeping."}</p><button type="button" className="ld-danger" onClick={() => deleteItem(item.id)}>Remove</button></div>}
                 </article>
               ))}
             </div>
           </section>
         )}
-
 
         {view === "garden" && (
           <section className="ld-page ld-garden-page">
@@ -765,6 +807,73 @@ export default function LittleDaysApp() {
             )}
           </section>
         )}
+
+
+        {detailId && (() => {
+          const detailItem = items.find((item) => item.id === detailId);
+          if (!detailItem) return null;
+          const detailDays = detailItem.mode === "until" ? daysUntil(detailItem.target) : daysSince(detailItem.target);
+          const isPast = detailItem.mode === "until" && detailItem.target < todayKey;
+          return (
+            <div className="ld-detail-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setDetailId(null); setEditingDetail(false); } }}>
+              <article className="ld-detail-view" role="dialog" aria-modal="true" aria-label={detailItem.title}>
+                <button className="ld-detail-close" type="button" onClick={() => { setDetailId(null); setEditingDetail(false); }} aria-label="Close">×</button>
+
+                {!editingDetail ? (
+                  <>
+                    <div className={"ld-detail-hero " + (detailItem.mode === "since" ? "memory" : "")}>
+                      <span className="ld-detail-icon">{itemIcon(detailItem)}</span>
+                      <span className="ld-eyebrow">{detailItem.mode === "until" ? (isPast ? "past little day" : "coming up") : "remembered"}</span>
+                      <h2>{detailItem.title}</h2>
+                      <p>{prettyDate(detailItem.target)}</p>
+                    </div>
+
+                    <div className="ld-detail-number">
+                      <strong>{detailDays}</strong>
+                      <span>{detailItem.mode === "until" ? "days until" : "days since"}</span>
+                    </div>
+
+                    <div className="ld-detail-progress">
+                      <div className="ld-detail-progress-line">
+                        <span className={detailItem.mode === "since" ? "filled" : ""} />
+                      </div>
+                      <div>
+                        <span>{detailItem.mode === "since" ? "The days keep growing." : isPast ? "This date has passed." : "A little day is waiting for you."}</span>
+                        <span>{shortDate(detailItem.target)}</span>
+                      </div>
+                    </div>
+
+                    <div className="ld-detail-note">
+                      <span className="ld-eyebrow">a little note</span>
+                      <p>{detailItem.note || "Nothing written yet. You can add a small note about why this day matters."}</p>
+                    </div>
+
+                    <div className="ld-detail-actions">
+                      <button type="button" className="ld-secondary" onClick={() => setEditingDetail(true)}>Edit</button>
+                      <button type="button" className="ld-danger-pill" onClick={async () => { setDetailId(null); await deleteItem(detailItem.id); }}>Remove</button>
+                    </div>
+                  </>
+                ) : (
+                  <form className="ld-detail-edit" onSubmit={(event) => {
+                    event.preventDefault();
+                    const form = new FormData(event.currentTarget);
+                    updateItem(detailItem.id, String(form.get("title") || ""), String(form.get("target") || ""), String(form.get("note") || ""), String(form.get("category") || "life"));
+                  }}>
+                    <span className="ld-eyebrow">edit little day</span>
+                    <h2>Keep the details close.</h2>
+                    <label>Title<input className="ld-input" name="title" defaultValue={detailItem.title} /></label>
+                    <label>Date<input className="ld-input" type="date" name="target" defaultValue={detailItem.target} /></label>
+                    <label>Kind<select className="ld-input" name="category" defaultValue={detailItem.category}>
+                      <option value="life">Life</option><option value="travel">Travel</option><option value="love">Love</option><option value="memory">Memory</option><option value="holiday">Holiday</option><option value="milestone">Milestone</option>
+                    </select></label>
+                    <label>Note<textarea className="ld-input ld-textarea" name="note" defaultValue={detailItem.note} placeholder="Why does this little day matter?" /></label>
+                    <div className="ld-detail-actions"><button type="button" className="ld-secondary" onClick={() => setEditingDetail(false)}>Cancel</button><button type="submit" className="ld-primary" disabled={busy}>Save changes</button></div>
+                  </form>
+                )}
+              </article>
+            </div>
+          );
+        })()}
 
         <footer className="ld-footer"><span>Little Days · a small ritual around time</span><button type="button" onClick={signOut}>Sign out</button><span>Made for two people who keep choosing each other.</span></footer>
       </div>
