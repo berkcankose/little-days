@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "until" | "since";
+type Recurrence = "once" | "annual";
 type View = "today" | "ahead" | "since" | "garden";
 type AddMode = "until" | "since" | "habit";
 type YearView = "remaining" | "full";
@@ -15,6 +16,7 @@ type TimeItem = {
   mode: Mode;
   category: string;
   note: string;
+  recurrence: Recurrence;
 };
 type Habit = { id: string; title: string; frequency: "daily" | "weekdays"; icon: string };
 type ItemMemory = {
@@ -35,7 +37,7 @@ type Template = {
   title: string;
 };
 
-const DEFAULT: TimeItem = { id: "", title: "2027", target: "2027-01-01", mode: "until", category: "milestone", note: "" };
+const DEFAULT: TimeItem = { id: "", title: "2027", target: "2027-01-01", mode: "until", category: "milestone", note: "", recurrence: "once", recurrence: "once" };
 const STORAGE_KEY = "little-days-time-items";
 const HABITS_KEY = "little-days-habits";
 const HABIT_LOGS_KEY = "little-days-habit-logs";
@@ -81,6 +83,23 @@ function daysSince(target: string) {
   const today = parseDate(dateKey());
   const start = parseDate(target);
   return Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
+}
+
+function annualOccurrence(target: string, from = new Date()) {
+  const original = parseDate(target);
+  let occurrence = new Date(from.getFullYear(), original.getMonth(), original.getDate());
+  const today = parseDate(dateKey(from));
+  if (occurrence < today) occurrence = new Date(from.getFullYear() + 1, original.getMonth(), original.getDate());
+  return occurrence;
+}
+
+function daysUntilAnnual(target: string) {
+  const occurrence = annualOccurrence(target);
+  return Math.max(0, Math.floor((occurrence.getTime() - parseDate(dateKey()).getTime()) / 86400000));
+}
+
+function nextAnnualDate(target: string) {
+  return dateKey(annualOccurrence(target));
 }
 
 function prettyDate(target: string) {
@@ -156,8 +175,12 @@ export default function LittleDaysApp() {
     return "✦";
   }
   const upcoming = items
-    .filter((item) => item.mode === "until" && item.target >= todayKey)
-    .sort((a, b) => a.target.localeCompare(b.target));
+    .filter((item) => item.mode === "until" && (item.recurrence === "annual" || item.target >= todayKey))
+    .sort((a, b) => {
+      const aDate = a.recurrence === "annual" ? nextAnnualDate(a.target) : a.target;
+      const bDate = b.recurrence === "annual" ? nextAnnualDate(b.target) : b.target;
+      return aDate.localeCompare(bDate);
+    });
   const memories = items.filter((item) => item.mode === "since").sort((a, b) => b.target.localeCompare(a.target));
   const todayMarked = markedDates.includes(todayKey);
   const completedHabits = habits.filter((habit) => (habitLogs[habit.id] ?? []).includes(todayKey)).length;
@@ -217,7 +240,7 @@ export default function LittleDaysApp() {
 
         const { data: timeData, error: timeError } = await supabase
           .from("time_items")
-          .select("id,title,target_date,mode,category,note")
+          .select("id,title,target_date,mode,category,note,recurrence")
           .order("created_at", { ascending: true });
 
         let loadedItems: TimeItem[] = [];
@@ -230,6 +253,7 @@ export default function LittleDaysApp() {
             mode: item.mode === "since" ? "since" : "until",
             category: item.category || "life",
             note: item.note || "",
+            recurrence: item.recurrence === "annual" ? "annual" : "once",
           }));
         } else {
           const { data, error } = await supabase
@@ -245,7 +269,9 @@ export default function LittleDaysApp() {
             target: item.target_date,
             mode: modes[item.id] ?? "until",
             category: "life",
+            recurrence: "once",
             note: "",
+            recurrence: "once",
           }));
         }
 
@@ -444,6 +470,7 @@ export default function LittleDaysApp() {
     const icon = String(form.get("icon") || "○").trim() || "○";
     const category = String(form.get("category") || "life");
     const note = String(form.get("note") || "").trim();
+    const recurrence = String(form.get("recurrence") || "once") === "annual" ? "annual" : "once";
     const frequency = String(form.get("frequency") || "daily") as Habit["frequency"];
 
     if (!title || (addMode !== "habit" && !target)) return;
@@ -467,12 +494,12 @@ export default function LittleDaysApp() {
         }
       } else {
         const mode = addMode;
-        const optimistic: TimeItem = { id: crypto.randomUUID(), title, target, mode, category, note };
+        const optimistic: TimeItem = { id: crypto.randomUUID(), title, target, mode, category, note, recurrence };
         setItems((current) => [...current, optimistic]);
         setActiveId(optimistic.id);
 
         const { data, error } = await supabase.from("time_items")
-          .insert({ user_id: userData.user.id, title, target_date: target, mode, category, note })
+          .insert({ user_id: userData.user.id, title, target_date: target, mode, category, note, recurrence })
           .select("id,title,target_date,mode,category,note")
           .single();
 
@@ -484,6 +511,7 @@ export default function LittleDaysApp() {
             mode: data.mode === "since" ? "since" : "until",
             category: data.category || category,
             note: data.note || note,
+            recurrence: data.recurrence === "annual" ? "annual" : recurrence,
           };
           setItems((current) => current.map((item) => item.id === optimistic.id ? saved : item));
           setActiveId(data.id);
@@ -493,7 +521,7 @@ export default function LittleDaysApp() {
             .select("id,title,target_date")
             .single();
           if (fallbackError) throw fallbackError;
-          const saved: TimeItem = { id: fallback.id, title: fallback.title, target: fallback.target_date, mode: "until", category, note };
+          const saved: TimeItem = { id: fallback.id, title: fallback.title, target: fallback.target_date, mode: "until", category, note, recurrence };
           setItems((current) => current.map((item) => item.id === optimistic.id ? saved : item));
           setActiveId(fallback.id);
         } else if (error) {
@@ -595,17 +623,17 @@ export default function LittleDaysApp() {
     }
   }
 
-  async function updateItem(id: string, title: string, target: string, note: string, category: string) {
+  async function updateItem(id: string, title: string, target: string, note: string, category: string, recurrence: Recurrence) {
     if (busy || !title.trim() || !target) return;
     const previous = items;
-    const next = items.map((item) => item.id === id ? { ...item, title: title.trim(), target, note: note.trim(), category } : item);
+    const next = items.map((item) => item.id === id ? { ...item, title: title.trim(), target, note: note.trim(), category, recurrence } : item);
     setItems(next);
     saveJson(STORAGE_KEY, next);
     setBusy(true);
 
     try {
       const { error } = await supabase.from("time_items")
-        .update({ title: title.trim(), target_date: target, note: note.trim(), category })
+        .update({ title: title.trim(), target_date: target, note: note.trim(), category, recurrence })
         .eq("id", id);
       if (error) {
         // Legacy countdowns do not have the richer fields; retain the local representation.
@@ -940,7 +968,10 @@ export default function LittleDaysApp() {
         {detailId && (() => {
           const detailItem = items.find((item) => item.id === detailId);
           if (!detailItem) return null;
-          const detailDays = detailItem.mode === "until" ? daysUntil(detailItem.target) : daysSince(detailItem.target);
+          const detailDays = detailItem.mode === "until"
+            ? (detailItem.recurrence === "annual" ? daysUntilAnnual(detailItem.target) : daysUntil(detailItem.target))
+            : daysSince(detailItem.target);
+          const detailNextDate = detailItem.recurrence === "annual" ? nextAnnualDate(detailItem.target) : detailItem.target;
           const isPast = detailItem.mode === "until" && detailItem.target < todayKey;
           return (
             <div className="ld-detail-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setDetailId(null); setEditingDetail(false); } }}>
@@ -967,7 +998,7 @@ export default function LittleDaysApp() {
                       <span className="ld-detail-icon">{itemIcon(detailItem)}</span>
                       <span className="ld-eyebrow">{detailItem.mode === "until" ? (isPast ? "past little day" : "coming up") : "remembered"}</span>
                       <h2>{detailItem.title}</h2>
-                      <p>{prettyDate(detailItem.target)}</p>
+                      <p>{detailItem.recurrence === "annual" ? "Every year · " + prettyDate(detailNextDate) : prettyDate(detailItem.target)}</p>
                     </div>
 
                     <div className="ld-detail-number">
@@ -981,7 +1012,7 @@ export default function LittleDaysApp() {
                       </div>
                       <div>
                         <span>{detailItem.mode === "since" ? "The days keep growing." : isPast ? "This date has passed." : "A little day is waiting for you."}</span>
-                        <span>{shortDate(detailItem.target)}</span>
+                        <span>{shortDate(detailNextDate)}</span>
                       </div>
                     </div>
 
@@ -1041,12 +1072,13 @@ export default function LittleDaysApp() {
                   <form className="ld-detail-edit" onSubmit={(event) => {
                     event.preventDefault();
                     const form = new FormData(event.currentTarget);
-                    updateItem(detailItem.id, String(form.get("title") || ""), String(form.get("target") || ""), String(form.get("note") || ""), String(form.get("category") || "life"));
+                    updateItem(detailItem.id, String(form.get("title") || ""), String(form.get("target") || ""), String(form.get("note") || ""), String(form.get("category") || "life"), String(form.get("recurrence") || "once") === "annual" ? "annual" : "once");
                   }}>
                     <span className="ld-eyebrow">edit little day</span>
                     <h2>Keep the details close.</h2>
                     <label>Title<input className="ld-input" name="title" defaultValue={detailItem.title} /></label>
                     <label>Date<input className="ld-input" type="date" name="target" defaultValue={detailItem.target} /></label>
+                    <label>Repeats<select className="ld-input" name="recurrence" defaultValue={detailItem.recurrence}><option value="once">Once</option><option value="annual">Every year</option></select></label>
                     <label>Kind<select className="ld-input" name="category" defaultValue={detailItem.category}>
                       <option value="life">Life</option><option value="travel">Travel</option><option value="love">Love</option><option value="memory">Memory</option><option value="holiday">Holiday</option><option value="milestone">Milestone</option>
                     </select></label>
@@ -1092,7 +1124,8 @@ export default function LittleDaysApp() {
   max={addMode === "since" ? todayKey : undefined}
   defaultValue={addMode === "since" ? todayKey : ""}
   required
-/></label>}
+/></label>
+                {addMode !== "habit" && <label className="ld-recurrence-field"><span className="ld-form-label">Does it repeat?</span><select className="ld-input" name="recurrence" defaultValue={selectedTemplateData.id === "birthday" || selectedTemplateData.id === "anniversary" ? "annual" : "once"}><option value="once">Just this date</option><option value="annual">Every year</option></select></label>}
               </div>
               {addMode !== "habit" && <div className="ld-form-grid ld-note-row"><label><span className="ld-form-label">What makes it matter?</span><textarea className="ld-input ld-textarea" name="note" placeholder="A small note, place, plan, or memory…" rows={3} /></label><label><span className="ld-form-label">Kind</span><select className="ld-input" name="category" defaultValue={selectedTemplateData.id === "trip" ? "travel" : selectedTemplateData.id === "anniversary" ? "love" : selectedTemplateData.id === "holiday" ? "holiday" : selectedTemplateData.mode === "since" ? "memory" : selectedTemplateData.id === "milestone" ? "milestone" : "life"}><option value="life">Life</option><option value="travel">Travel</option><option value="love">Love</option><option value="memory">Memory</option><option value="holiday">Holiday</option><option value="milestone">Milestone</option></select></label></div>}
               {addMode === "habit" && <div className="ld-form-grid"><label><span className="ld-form-label">Frequency</span><select className="ld-input" name="frequency" defaultValue="daily"><option value="daily">Every day</option><option value="weekdays">Weekdays</option></select></label><label><span className="ld-form-label">Symbol</span><input className="ld-input" name="icon" defaultValue="○" maxLength={2} /></label></div>}
