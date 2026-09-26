@@ -562,6 +562,17 @@ export default function Home() {
           </article>
         </section>
 
+        <section className="card daily-mark-card">
+          <div>
+            <div className="card-kicker">one little thing</div>
+            <h2>Did you notice today?</h2>
+            <p>There is no streak to protect. Just a tiny mark that this day happened.</p>
+          </div>
+          <button className={`check-button daily-mark-button ${checked ? "checked" : ""}`} type="button" onClick={toggleCheckin} disabled={busy}>
+            {checked ? "✓ Marked today" : "Mark today"}
+          </button>
+        </section>
+
         <section className="card garden-card large-garden" id="garden">
           <div className="garden-head">
             <div><div className="card-kicker">your little garden</div><h2>Every day leaves something behind.</h2><p>Past days become flowers. Today is a bud. Tomorrow is still a seed.</p></div>
