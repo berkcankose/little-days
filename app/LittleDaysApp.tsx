@@ -49,6 +49,12 @@ const DEFAULT_HABITS: Habit[] = [
   { id: "habit-read", title: "Read", frequency: "daily", icon: "○" },
 ];
 
+const OUR_SPECIAL_DATES = [
+  { key: "wife-birthday", title: "Her birthday", target: "1998-07-26", mode: "until" as Mode, category: "birthday", note: "The day she was born.", recurrence: "annual" as Recurrence },
+  { key: "your-birthday", title: "Your birthday", target: "1999-07-11", mode: "until" as Mode, category: "birthday", note: "The day you were born.", recurrence: "annual" as Recurrence },
+  { key: "wedding-anniversary", title: "Our wedding anniversary", target: "2022-09-03", mode: "since" as Mode, category: "love", note: "The day you got married.", recurrence: "annual" as Recurrence },
+];
+
 const TEMPLATES: Template[] = [
   { id: "birthday", label: "Birthday", description: "Something to look forward to", icon: "✦", mode: "until", title: "Birthday" },
   { id: "anniversary", label: "Anniversary", description: "Keep a special date close", icon: "♡", mode: "since", title: "Our anniversary" },
@@ -308,6 +314,43 @@ export default function LittleDaysApp() {
 
             if (error) throw error;
             loadedItems = [{ id: data.id, title: data.title, target: data.target_date, mode: "until", category: "milestone", note: "", recurrence: "once" }];
+          }
+        }
+
+        // Seed the three explicitly defined personal dates once, without duplicating them.
+        const missingSpecialDates = OUR_SPECIAL_DATES.filter((special) =>
+          !loadedItems.some((item) => item.target === special.target && item.category === special.category)
+        );
+
+        if (missingSpecialDates.length) {
+          const rows = missingSpecialDates.map((special) => ({
+            user_id: user.id,
+            title: special.title,
+            target_date: special.target,
+            mode: special.mode,
+            category: special.category,
+            note: special.note,
+            recurrence: special.recurrence,
+          }));
+
+          const { data: seeded } = await supabase
+            .from("time_items")
+            .insert(rows)
+            .select("id,title,target_date,mode,category,note,recurrence");
+
+          if (seeded) {
+            loadedItems = [
+              ...loadedItems,
+              ...seeded.map((item) => ({
+                id: item.id,
+                title: item.title,
+                target: item.target_date,
+                mode: item.mode === "since" ? "since" as Mode : "until" as Mode,
+                category: item.category || "life",
+                note: item.note || "",
+                recurrence: item.recurrence === "annual" ? "annual" as Recurrence : "once" as Recurrence,
+              })),
+            ];
           }
         }
 
@@ -864,6 +907,31 @@ export default function LittleDaysApp() {
                 </button>
               </div>
             </div>
+
+            <section className="ld-our-dates">
+              <div className="ld-section-row">
+                <div><span className="ld-eyebrow">the dates that are yours</span><h2>Us</h2></div>
+                <span>three little dates</span>
+              </div>
+              <div className="ld-our-dates-grid">
+                {OUR_SPECIAL_DATES.map((special) => {
+                  const item = items.find((entry) => entry.target === special.target && entry.category === special.category);
+                  if (!item) return null;
+                  const days = item.mode === "since" ? daysSince(item.target) : daysUntilAnnual(item.target);
+                  const years = item.mode === "since" ? completedYearsSince(item.target) : null;
+                  return (
+                    <button key={special.key} type="button" className={"ld-our-date " + (special.category === "love" ? "love" : "")} onClick={() => { setActiveId(item.id); setDetailId(item.id); }}>
+                      <span className="ld-our-date-symbol">{special.category === "love" ? "♡" : "✦"}</span>
+                      <span className="ld-our-date-copy">
+                        <small>{special.category === "love" ? "OUR WEDDING" : special.key === "wife-birthday" ? "HER BIRTHDAY" : "YOUR BIRTHDAY"}</small>
+                        <strong>{special.category === "love" ? years + " " + (years === 1 ? "year" : "years") + " married" : days === 0 ? "Today" : days + " days"}</strong>
+                        <em>{prettyDate(nextAnnualDate(item.target))}</em>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
 
             {nextPersonalDate && (
               <article className="ld-personal-card">
