@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "Little Days",
   description: "A small, beautiful way to notice time passing.",
   applicationName: "Little Days",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.webmanifest",\n  icons: { icon: "/icon.svg", apple: "/icon.svg" },
 };
 
 export const viewport: Viewport = {
