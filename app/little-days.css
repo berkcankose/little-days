@@ -1033,3 +1033,35 @@
 .ld-our-date-copy strong{overflow:hidden;color:var(--ld-ink);font-size:12px;line-height:1.05;text-overflow:ellipsis;white-space:nowrap}
 .ld-our-date-copy em{color:var(--ld-muted);font-size:7.5px;font-style:normal}
 @media(max-width:720px){.ld-our-dates-grid{grid-template-columns:1fr}.ld-our-date{padding:14px}.ld-our-date-copy strong{font-size:13px}}
+
+
+/* --- Relationship timeline --- */
+.ld-relationship-story{
+  margin:0 0 26px;
+  padding:21px 20px 18px;
+  border:1px solid rgba(163,108,112,.15);
+  border-radius:22px;
+  background:linear-gradient(135deg,#f8eeeb 0%,#f8f3e8 100%);
+}
+.ld-relationship-story-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
+.ld-relationship-story-head h3{margin:5px 0 0;max-width:320px;font-family:Georgia,"Times New Roman",serif;font-size:24px;line-height:1.02;font-weight:500;letter-spacing:-.045em}
+.ld-relationship-start{color:#8d7a76;font-size:8px;white-space:nowrap}
+.ld-relationship-line{display:flex;align-items:flex-start;gap:0;margin-top:24px;overflow-x:auto;padding:4px 2px 8px;scrollbar-width:none}
+.ld-relationship-line::-webkit-scrollbar{display:none}
+.ld-relationship-start-dot,.ld-relationship-milestone,.ld-relationship-next{position:relative;flex:0 0 68px;text-align:center}
+.ld-relationship-start-dot{width:31px;height:31px;flex-basis:31px;margin:2px 12px 0 0;display:grid;place-items:center;border-radius:50%;background:#fffaf7;color:#a36c70;font-size:13px;box-shadow:0 0 0 5px rgba(255,253,248,.55)}
+.ld-relationship-milestone:before,.ld-relationship-next:before{content:"";position:absolute;top:17px;left:-1px;width:69px;height:1px;background:rgba(163,108,112,.24)}
+.ld-relationship-milestone:first-of-type:before{left:-14px;width:82px}
+.ld-relationship-milestone>span,.ld-relationship-next>span{position:relative;display:block;margin-bottom:6px;color:#927f7a;font-size:6px;font-weight:850;letter-spacing:.09em;text-transform:uppercase}
+.ld-relationship-milestone strong,.ld-relationship-next strong{position:relative;z-index:1;display:grid;place-items:center;width:28px;height:28px;margin:0 auto;border-radius:50%;background:#fffaf7;color:#8d6968;font-size:9px}
+.ld-relationship-milestone small,.ld-relationship-next small{display:block;margin-top:7px;color:#927f7a;font-size:7px}
+.ld-relationship-milestone.current strong{background:#a36c70;color:white;box-shadow:0 0 0 5px rgba(163,108,112,.11)}
+.ld-relationship-milestone.current>span{color:#9b6669}
+.ld-relationship-next strong{border:1px dashed rgba(163,108,112,.38);background:transparent;color:#9b6669}
+.ld-relationship-caption{margin:8px 0 0;color:#8c7b77;font-size:9px;line-height:1.5}
+@media(max-width:560px){
+  .ld-relationship-story{padding:18px 15px 15px}
+  .ld-relationship-story-head{align-items:flex-start;flex-direction:column;gap:7px}
+  .ld-relationship-story-head h3{font-size:22px}
+  .ld-relationship-start{font-size:7px}
+}
