@@ -7,7 +7,14 @@ import { createClient } from "@/lib/supabase/client";
 type Mode = "until" | "since";
 type View = "today" | "ahead" | "since" | "garden";
 type AddMode = "until" | "since" | "habit";
-type TimeItem = { id: string; title: string; target: string; mode: Mode };
+type TimeItem = {
+  id: string;
+  title: string;
+  target: string;
+  mode: Mode;
+  category: string;
+  note: string;
+};
 type Habit = { id: string; title: string; frequency: "daily" | "weekdays"; icon: string };
 
 type Template = {
@@ -19,12 +26,13 @@ type Template = {
   title: string;
 };
 
-const DEFAULT: TimeItem = { id: "", title: "2027", target: "2027-01-01", mode: "until" };
+const DEFAULT: TimeItem = { id: "", title: "2027", target: "2027-01-01", mode: "until", category: "milestone", note: "" };
 const STORAGE_KEY = "little-days-time-items";
 const HABITS_KEY = "little-days-habits";
 const HABIT_LOGS_KEY = "little-days-habit-logs";
 const MODE_KEY = "little-days-modes";
 const MARKS_KEY = "little-days-marked-dates";
+const ITEM_DETAILS_KEY = "little-days-item-details";
 
 const DEFAULT_HABITS: Habit[] = [
   { id: "habit-run", title: "Move your body", frequency: "daily", icon: "○" },
@@ -125,6 +133,14 @@ export default function LittleDaysApp() {
   const todayKey = dateKey();
   const progress = useMemo(yearProgress, []);
   const active = items.find((item) => item.id === activeId) ?? items[0];
+
+  function itemIcon(item: TimeItem) {
+    if (item.category === "travel") return "↗";
+    if (item.category === "love") return "♡";
+    if (item.category === "memory") return "✿";
+    if (item.category === "holiday") return "☼";
+    return "✦";
+  }
   const upcoming = items
     .filter((item) => item.mode === "until" && item.target >= todayKey)
     .sort((a, b) => a.target.localeCompare(b.target));
@@ -187,7 +203,7 @@ export default function LittleDaysApp() {
 
         const { data: timeData, error: timeError } = await supabase
           .from("time_items")
-          .select("id,title,target_date,mode")
+          .select("id,title,target_date,mode,category,note")
           .order("created_at", { ascending: true });
 
         let loadedItems: TimeItem[] = [];
@@ -198,6 +214,8 @@ export default function LittleDaysApp() {
             title: item.title,
             target: item.target_date,
             mode: item.mode === "since" ? "since" : "until",
+            category: item.category || "life",
+            note: item.note || "",
           }));
         } else {
           const { data, error } = await supabase
@@ -212,13 +230,20 @@ export default function LittleDaysApp() {
             title: item.title,
             target: item.target_date,
             mode: modes[item.id] ?? "until",
+            category: "life",
+            note: "",
           }));
         }
 
         if (!loadedItems.length) {
           const localItems = loadJson<TimeItem[]>(STORAGE_KEY, []);
           if (localItems.length) {
-            loadedItems = localItems.map((item) => ({ ...item, id: item.id || crypto.randomUUID() }));
+            loadedItems = localItems.map((item) => ({
+              ...item,
+              id: item.id || crypto.randomUUID(),
+              category: item.category || "life",
+              note: item.note || "",
+            }));
           } else {
             const { data, error } = await supabase
               .from("countdowns")
@@ -227,7 +252,7 @@ export default function LittleDaysApp() {
               .single();
 
             if (error) throw error;
-            loadedItems = [{ id: data.id, title: data.title, target: data.target_date, mode: "until" }];
+            loadedItems = [{ id: data.id, title: data.title, target: data.target_date, mode: "until", category: "milestone", note: "" }];
           }
         }
 
@@ -365,6 +390,8 @@ export default function LittleDaysApp() {
     const title = String(form.get("title") || "").trim();
     const target = String(form.get("target") || "");
     const icon = String(form.get("icon") || "○").trim() || "○";
+    const category = String(form.get("category") || "life");
+    const note = String(form.get("note") || "").trim();
     const frequency = String(form.get("frequency") || "daily") as Habit["frequency"];
 
     if (!title || (addMode !== "habit" && !target)) return;
@@ -388,17 +415,24 @@ export default function LittleDaysApp() {
         }
       } else {
         const mode = addMode;
-        const optimistic: TimeItem = { id: crypto.randomUUID(), title, target, mode };
+        const optimistic: TimeItem = { id: crypto.randomUUID(), title, target, mode, category, note };
         setItems((current) => [...current, optimistic]);
         setActiveId(optimistic.id);
 
         const { data, error } = await supabase.from("time_items")
-          .insert({ user_id: userData.user.id, title, target_date: target, mode })
+          .insert({ user_id: userData.user.id, title, target_date: target, mode, category, note })
           .select("id,title,target_date,mode")
           .single();
 
         if (!error && data) {
-          const saved: TimeItem = { id: data.id, title: data.title, target: data.target_date, mode: data.mode === "since" ? "since" : "until" };
+          const saved: TimeItem = {
+            id: data.id,
+            title: data.title,
+            target: data.target_date,
+            mode: data.mode === "since" ? "since" : "until",
+            category: data.category || category,
+            note: data.note || note,
+          };
           setItems((current) => current.map((item) => item.id === optimistic.id ? saved : item));
           setActiveId(data.id);
         } else if (error && mode === "until") {
@@ -407,7 +441,7 @@ export default function LittleDaysApp() {
             .select("id,title,target_date")
             .single();
           if (fallbackError) throw fallbackError;
-          const saved: TimeItem = { id: fallback.id, title: fallback.title, target: fallback.target_date, mode: "until" };
+          const saved: TimeItem = { id: fallback.id, title: fallback.title, target: fallback.target_date, mode: "until", category, note };
           setItems((current) => current.map((item) => item.id === optimistic.id ? saved : item));
           setActiveId(fallback.id);
         } else if (error) {
@@ -538,7 +572,7 @@ export default function LittleDaysApp() {
             <div className="ld-mini-grid">
               {upcoming.slice(0, 3).map((item) => (
                 <button className="ld-object-card" key={item.id} type="button" onClick={() => { setActiveId(item.id); go("ahead"); }}>
-                  <span className="ld-object-icon">✦</span>
+                  <span className="ld-object-icon">{itemIcon(item)}</span>
                   <span><strong>{item.title}</strong><small>{daysUntil(item.target)} days · {shortDate(item.target)}</small></span>
                 </button>
               ))}
@@ -582,11 +616,11 @@ export default function LittleDaysApp() {
               {upcoming.map((item) => (
                 <article className={`ld-large-object ${activeId === item.id ? "selected" : ""}`} key={item.id}>
                   <button type="button" className="ld-large-object-main" onClick={() => setActiveId(item.id)}>
-                    <span className="ld-large-icon">✦</span>
+                    <span className="ld-large-icon">{itemIcon(item)}</span>
                     <span><strong>{item.title}</strong><small>{prettyDate(item.target)}</small></span>
                     <span className="ld-large-value"><strong>{daysUntil(item.target)}</strong><small>days</small></span>
                   </button>
-                  {activeId === item.id && <div className="ld-detail"><span>counting down</span><strong>{daysUntil(item.target)} days until {item.title}</strong><p>{prettyDate(item.target)} · This date can stay simple. Add more detail later when you need it.</p><button type="button" className="ld-danger" onClick={() => deleteItem(item.id)}>Remove</button></div>}
+                  {activeId === item.id && <div className="ld-detail"><span>counting down</span><strong>{daysUntil(item.target)} days until {item.title}</strong><p>{prettyDate(item.target)} · {item.note || "This little day can stay simple. Add a note when you want to remember why it matters."}</p><button type="button" className="ld-danger" onClick={() => deleteItem(item.id)}>Remove</button></div>}
                 </article>
               ))}
             </div>
@@ -601,11 +635,11 @@ export default function LittleDaysApp() {
               {memories.map((item) => (
                 <article className={`ld-large-object ${activeId === item.id ? "selected" : ""}`} key={item.id}>
                   <button type="button" className="ld-large-object-main" onClick={() => setActiveId(item.id)}>
-                    <span className="ld-large-icon memory">✿</span>
+                    <span className="ld-large-icon memory">{itemIcon(item)}</span>
                     <span><strong>{item.title}</strong><small>since {prettyDate(item.target)}</small></span>
                     <span className="ld-large-value"><strong>{daysSince(item.target)}</strong><small>days</small></span>
                   </button>
-                  {activeId === item.id && <div className="ld-detail"><span>remembered</span><strong>{daysSince(item.target)} days since {item.title}</strong><p>{prettyDate(item.target)} · A day does not need a note to be worth keeping.</p><button type="button" className="ld-danger" onClick={() => deleteItem(item.id)}>Remove</button></div>}
+                  {activeId === item.id && <div className="ld-detail"><span>remembered</span><strong>{daysSince(item.target)} days since {item.title}</strong><p>{prettyDate(item.target)} · {item.note || "A day does not need a note to be worth keeping."}</p><button type="button" className="ld-danger" onClick={() => deleteItem(item.id)}>Remove</button></div>}
                 </article>
               ))}
             </div>
@@ -662,6 +696,7 @@ export default function LittleDaysApp() {
   required
 /></label>}
               </div>
+              {addMode !== "habit" && <div className="ld-form-grid ld-note-row"><label><span className="ld-form-label">What makes it matter?</span><textarea className="ld-input ld-textarea" name="note" placeholder="A small note, place, plan, or memory…" rows={3} /></label><label><span className="ld-form-label">Kind</span><select className="ld-input" name="category" defaultValue={selectedTemplateData.id === "trip" ? "travel" : selectedTemplateData.id === "anniversary" ? "love" : selectedTemplateData.mode === "since" ? "memory" : selectedTemplateData.id}><option value="life">Life</option><option value="travel">Travel</option><option value="love">Love</option><option value="memory">Memory</option><option value="holiday">Holiday</option><option value="milestone">Milestone</option></select></label></div>}
               {addMode === "habit" && <div className="ld-form-grid"><label><span className="ld-form-label">Frequency</span><select className="ld-input" name="frequency" defaultValue="daily"><option value="daily">Every day</option><option value="weekdays">Weekdays</option></select></label><label><span className="ld-form-label">Symbol</span><input className="ld-input" name="icon" defaultValue="○" maxLength={2} /></label></div>}
               <div className="ld-modal-actions"><button type="button" className="ld-secondary" onClick={() => setShowAdd(false)}>Not now</button><button className="ld-primary" type="submit" disabled={busy}>{busy ? "Saving…" : addMode === "habit" ? "Plant habit" : addMode === "since" ? "Remember it" : "Keep it"}</button></div>
             </form>
