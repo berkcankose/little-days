@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "until" | "since";
@@ -501,7 +502,7 @@ export default function Home() {
           <article className="card year-card">
             <div className="card-kicker">this year</div>
             <div className="year-number">{progress.year}</div>
-            <div className="progress-ring" style={{ "--progress": progress.percent } as React.CSSProperties}>
+            <div className="progress-ring" style={{ "--progress": progress.percent } as CSSProperties}>
               <div><strong>{progress.percent}%</strong><span>of the year</span></div>
             </div>
             <div className="year-meta"><span>{progress.passed} days passed</span><span>{progress.total - progress.passed} days ahead</span></div>
