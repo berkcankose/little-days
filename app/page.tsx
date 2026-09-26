@@ -13,6 +13,7 @@ const STORAGE_KEY = "little-days-time-items";
 const HABITS_KEY = "little-days-habits";
 const HABIT_LOGS_KEY = "little-days-habit-logs";
 const MODE_KEY = "little-days-modes";
+const MARKS_KEY = "little-days-marked-dates";
 
 const DEFAULT_HABITS: Habit[] = [
   { id: "habit-run", title: "Move your body", frequency: "daily", icon: "○" },
@@ -41,6 +42,20 @@ function daysSince(target: string) {
 
 function prettyDate(target: string) {
   return new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" }).format(parseDate(target));
+}
+
+function gardenDateLabel(date: Date) {
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(date);
+}
+
+function shiftDate(date: Date, amount: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+
+function gardenDayKey(date: Date) {
+  return dateKey(date);
 }
 
 function yearProgress() {
@@ -75,7 +90,7 @@ export default function Home() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [habitLogs, setHabitLogs] = useState<Record<string, string[]>>({});
   const [activeId, setActiveId] = useState("");
-  const [checked, setChecked] = useState(false);
+  const [markedDates, setMarkedDates] = useState<string[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState<"until" | "since" | "habit">("until");
   const [view, setView] = useState<"today" | "track" | "garden">("today");
@@ -115,8 +130,10 @@ export default function Home() {
 
         const localHabits = loadJson<Habit[]>(HABITS_KEY, DEFAULT_HABITS);
         const localLogs = loadJson<Record<string, string[]>>(HABIT_LOGS_KEY, {});
+        const localMarks = loadJson<string[]>(MARKS_KEY, []);
         setHabits(localHabits);
         setHabitLogs(localLogs);
+        setMarkedDates(localMarks);
 
         const { data: cloudHabits, error: habitError } = await supabase
           .from("habit_items")
@@ -195,26 +212,31 @@ export default function Home() {
         setItems(loadedItems);
         setActiveId(loadedItems[0]?.id ?? "");
 
-        if (loadedItems[0]) {
-          const { data: dailyMark, error: dailyMarkError } = await supabase
-            .from("daily_marks")
-            .select("id")
-            .eq("mark_date", todayKey)
-            .maybeSingle();
+        const { data: cloudMarks, error: marksError } = await supabase
+          .from("daily_marks")
+          .select("mark_date")
+          .order("mark_date", { ascending: true });
 
-          if (!cancelled) {
-            if (!dailyMarkError) {
-              setChecked(Boolean(dailyMark));
-            } else {
-              const { data: legacyCheckIn } = await supabase
-                .from("check_ins")
-                .select("id")
-                .eq("countdown_id", loadedItems[0].id)
-                .eq("check_date", todayKey)
-                .maybeSingle();
-              setChecked(Boolean(legacyCheckIn));
-            }
-          }
+        let loadedMarks: string[] = [];
+
+        if (!marksError && cloudMarks) {
+          loadedMarks = cloudMarks.map((mark) => mark.mark_date);
+        } else if (loadedItems[0]) {
+          const { data: legacyMarks } = await supabase
+            .from("check_ins")
+            .select("check_date")
+            .order("check_date", { ascending: true });
+
+          loadedMarks = [...new Set((legacyMarks ?? []).map((mark) => mark.check_date))];
+        }
+
+        if (!loadedMarks.length) {
+          loadedMarks = loadJson<string[]>(MARKS_KEY, []);
+        }
+
+        if (!cancelled) {
+          setMarkedDates(loadedMarks);
+          saveJson(MARKS_KEY, loadedMarks);
         }
 
         saveJson(STORAGE_KEY, loadedItems);
@@ -238,35 +260,18 @@ export default function Home() {
     saveJson(HABIT_LOGS_KEY, habitLogs);
   }, [habits, habitLogs]);
 
-  async function selectItem(id: string) {
+  function selectItem(id: string) {
     setActiveId(id);
-    setChecked(false);
-
-    const { data, error } = await supabase
-      .from("daily_marks")
-      .select("id")
-      .eq("mark_date", todayKey)
-      .maybeSingle();
-
-    if (!error) {
-      setChecked(Boolean(data));
-      return;
-    }
-
-    const { data: legacy } = await supabase
-      .from("check_ins")
-      .select("id")
-      .eq("countdown_id", id)
-      .eq("check_date", todayKey)
-      .maybeSingle();
-
-    setChecked(Boolean(legacy));
   }
 
   async function toggleCheckin() {
     if (!active || busy) return;
-    const previous = checked;
-    setChecked(!previous);
+    const previous = markedDates.includes(todayKey);
+    const optimistic = previous
+      ? markedDates.filter((day) => day !== todayKey)
+      : [...markedDates, todayKey].sort();
+    setMarkedDates(optimistic);
+    saveJson(MARKS_KEY, optimistic);
     setBusy(true);
 
     try {
@@ -287,7 +292,7 @@ export default function Home() {
             { onConflict: "user_id,mark_date" },
           );
           if (error) throw error;
-          flash("A little mark for today.");
+          flash("Today grew a little.");
         } else if (dailyMark) {
           const { error } = await supabase.from("daily_marks").delete().eq("id", dailyMark.id);
           if (error) throw error;
@@ -299,7 +304,7 @@ export default function Home() {
           { onConflict: "countdown_id,check_date" },
         );
         if (error) throw error;
-        flash("A little mark for today.");
+        flash("Today grew a little.");
       } else {
         const { error } = await supabase
           .from("check_ins")
@@ -310,7 +315,8 @@ export default function Home() {
         flash("Today is open again.");
       }
     } catch (error) {
-      setChecked(previous);
+      setMarkedDates(markedDates);
+      saveJson(MARKS_KEY, markedDates);
       flash(error instanceof Error ? error.message : "Could not save today's mark.");
     } finally {
       setBusy(false);
@@ -475,7 +481,9 @@ export default function Home() {
   }
 
   const completedHabits = habits.filter((habit) => (habitLogs[habit.id] ?? []).includes(todayKey)).length;
-  const gardenFlowers = Math.min(42, Math.max(8, progress.passed % 43));
+  const todayMarked = markedDates.includes(todayKey);
+  const gardenFlowers = markedDates.length;
+  const gardenDays = Array.from({ length: 56 }, (_, index) => shiftDate(new Date(), index - 48));
 
   if (loading) {
     return <main className="app-shell"><div className="app-frame"><div className="card loading-card"><span className="loading-flower">✿</span>Growing your little garden…</div></div></main>;
@@ -569,21 +577,30 @@ export default function Home() {
             <h2>Did you notice today?</h2>
             <p>There is no streak to protect. Just a tiny mark that this day happened.</p>
           </div>
-          <button className={`check-button daily-mark-button ${checked ? "checked" : ""}`} type="button" onClick={toggleCheckin} disabled={busy}>
-            {checked ? "✓ Marked today" : "Mark today"}
+          <button className={`check-button daily-mark-button ${todayMarked ? "checked" : ""}`} type="button" onClick={toggleCheckin} disabled={busy}>
+            {todayMarked ? "✓ Marked today" : "Mark today"}
           </button>
         </section>
 
         <section className="card garden-card large-garden" id="garden">
           <div className="garden-head">
             <div><div className="card-kicker">your little garden</div><h2>Every day leaves something behind.</h2><p>Past days become flowers. Today is a bud. Tomorrow is still a seed.</p></div>
-            <span className="garden-count">{gardenFlowers} flowers</span>
+            <span className="garden-count">{gardenFlowers} marked days</span>
           </div>
-          <div className="garden large">
-            {Array.from({ length: 56 }, (_, index) => {
-              const isDone = index < gardenFlowers;
-              const isToday = index === gardenFlowers;
-              return <div className={`flower ${isDone ? "done" : isToday ? "today" : "future"}`} key={index}><span className="flower-dot" /><span className="flower-number">{index + 1}</span></div>;
+          <div className="garden large" aria-label="Little garden calendar">
+            {gardenDays.map((day) => {
+              const key = gardenDayKey(day);
+              const isMarked = markedDates.includes(key);
+              const isToday = key === todayKey;
+              const isFuture = day.getTime() > new Date().setHours(0, 0, 0, 0);
+              const state = isMarked ? "done" : isToday ? "today" : isFuture ? "future" : "past";
+              const palette = ["rose", "blue", "lavender", "sun", "green"][day.getDate() % 5];
+              return (
+                <div className={`flower ${state} flower-${palette}`} key={key} title={`${gardenDateLabel(day)} — ${isMarked ? "marked" : isToday ? "today" : isFuture ? "future" : "not marked"}`}>
+                  <span className="flower-number">{gardenDateLabel(day)}</span>
+                  <span className="flower-dot" />
+                </div>
+              );
             })}
           </div>
         </section>
