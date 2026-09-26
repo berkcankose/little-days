@@ -1150,21 +1150,63 @@ export default function LittleDaysApp() {
             </div></div>
 
             <form className="ld-form" onSubmit={addThing}>
-              <div className="ld-form-grid">
-                <label><span className="ld-form-label">Name</span><input className="ld-input" name="title" defaultValue={selectedTemplateData.title} key={selectedTemplateData.id} placeholder="e.g. Japan" required /></label>
-                {addMode !== "habit" && <label><span className="ld-form-label">{addMode === "since" ? "When did it begin?" : "When is it?"}</span><input
-  className="ld-input"
-  name="target"
-  type="date"
-  max={addMode === "since" ? todayKey : undefined}
-  defaultValue={addMode === "since" ? todayKey : ""}
-  required
-/></label>
-                {addMode !== "habit" && <label className="ld-recurrence-field"><span className="ld-form-label">Does it repeat?</span><select className="ld-input" name="recurrence" defaultValue={selectedTemplateData.id === "birthday" || selectedTemplateData.id === "anniversary" ? "annual" : "once"}><option value="once">Just this date</option><option value="annual">Every year</option></select></label>}
+              <div className="ld-form-context">
+                <span className="ld-context-icon">{selectedTemplateData.icon}</span>
+                <div>
+                  <strong>{selectedTemplateData.label}</strong>
+                  <span>{selectedTemplateData.description}</span>
+                </div>
               </div>
-              {addMode !== "habit" && <div className="ld-form-grid ld-note-row"><label><span className="ld-form-label">What makes it matter?</span><textarea className="ld-input ld-textarea" name="note" placeholder="A small note, place, plan, or memory…" rows={3} /></label><label><span className="ld-form-label">Kind</span><select className="ld-input" name="category" defaultValue={selectedTemplateData.id === "trip" ? "travel" : selectedTemplateData.id === "anniversary" ? "love" : selectedTemplateData.id === "holiday" ? "holiday" : selectedTemplateData.mode === "since" ? "memory" : selectedTemplateData.id === "milestone" ? "milestone" : "life"}><option value="life">Life</option><option value="travel">Travel</option><option value="love">Love</option><option value="memory">Memory</option><option value="holiday">Holiday</option><option value="milestone">Milestone</option></select></label></div>}
-              {addMode === "habit" && <div className="ld-form-grid"><label><span className="ld-form-label">Frequency</span><select className="ld-input" name="frequency" defaultValue="daily"><option value="daily">Every day</option><option value="weekdays">Weekdays</option></select></label><label><span className="ld-form-label">Symbol</span><input className="ld-input" name="icon" defaultValue="○" maxLength={2} /></label></div>}
-              <div className="ld-modal-actions"><button type="button" className="ld-secondary" onClick={() => setShowAdd(false)}>Not now</button><button className="ld-primary" type="submit" disabled={busy}>{busy ? "Saving…" : addMode === "habit" ? "Plant habit" : addMode === "since" ? "Remember it" : "Keep it"}</button></div>
+
+              <div className="ld-form-grid">
+                <label>
+                  <span className="ld-form-label">{selectedTemplateData.id === "birthday" ? "Whose birthday?" : selectedTemplateData.id === "anniversary" ? "What are you celebrating?" : selectedTemplateData.id === "trip" ? "Where are you going?" : selectedTemplateData.id === "holiday" ? "What are you looking forward to?" : selectedTemplateData.id === "memory" ? "What should you remember?" : selectedTemplateData.id === "milestone" ? "What happened?" : "Name"}</span>
+                  <input
+                    className="ld-input"
+                    name="title"
+                    defaultValue={selectedTemplateData.title}
+                    key={selectedTemplateData.id}
+                    placeholder={selectedTemplateData.id === "trip" ? "e.g. Kyoto" : selectedTemplateData.id === "birthday" ? "e.g. Mum" : selectedTemplateData.id === "anniversary" ? "e.g. Our first date" : selectedTemplateData.title}
+                    required
+                  />
+                </label>
+
+                {addMode !== "habit" && <label>
+                  <span className="ld-form-label">{selectedTemplateData.id === "birthday" ? "When were they born?" : selectedTemplateData.id === "anniversary" ? "When did it begin?" : selectedTemplateData.id === "trip" ? "When do you leave?" : selectedTemplateData.id === "holiday" ? "When is it?" : selectedTemplateData.id === "memory" ? "When did it happen?" : selectedTemplateData.id === "milestone" ? "When did it happen?" : addMode === "since" ? "When did it begin?" : "When is it?"}</span>
+                  <input
+                    className="ld-input"
+                    name="target"
+                    type="date"
+                    max={addMode === "since" ? todayKey : undefined}
+                    defaultValue=""
+                    key={selectedTemplateData.id + "-date"}
+                    required
+                  />
+                </label>}
+
+                {addMode !== "habit" && <label className="ld-recurrence-field">
+                  <span className="ld-form-label">Repeats</span>
+                  <select className="ld-input" name="recurrence" key={selectedTemplateData.id + "-recurrence"} defaultValue={["birthday","anniversary","holiday"].includes(selectedTemplateData.id) ? "annual" : "once"}>
+                    <option value="once">Just this date</option>
+                    <option value="annual">Every year</option>
+                  </select>
+                </label>}
+              </div>
+
+              {addMode !== "habit" && <div className="ld-form-grid ld-note-row">
+                <label>
+                  <span className="ld-form-label">{selectedTemplateData.id === "trip" ? "Trip note" : selectedTemplateData.id === "birthday" ? "A little birthday note" : selectedTemplateData.id === "anniversary" ? "Why this date matters" : selectedTemplateData.id === "memory" ? "What do you remember?" : "A little note"}</span>
+                  <textarea className="ld-input ld-textarea" name="note" placeholder={selectedTemplateData.id === "trip" ? "Plans, places, reservations…" : selectedTemplateData.id === "birthday" ? "A wish, tradition, or little detail…" : selectedTemplateData.id === "anniversary" ? "A place, story, or reason to celebrate…" : selectedTemplateData.id === "memory" ? "Write down what you want to keep…" : "A small note for later…"} rows={3} />
+                </label>
+                <input type="hidden" name="category" value={selectedTemplateData.id === "trip" ? "travel" : selectedTemplateData.id === "anniversary" ? "love" : selectedTemplateData.id === "holiday" ? "holiday" : selectedTemplateData.id === "memory" ? "memory" : selectedTemplateData.id === "milestone" ? "milestone" : selectedTemplateData.id === "birthday" ? "birthday" : "life"} />
+              </div>}
+
+              {addMode === "habit" && <div className="ld-form-grid">
+                <label><span className="ld-form-label">Frequency</span><select className="ld-input" name="frequency" defaultValue="daily"><option value="daily">Every day</option><option value="weekdays">Weekdays</option></select></label>
+                <label><span className="ld-form-label">Symbol</span><input className="ld-input" name="icon" defaultValue="○" maxLength={2} /></label>
+              </div>}
+
+              <div className="ld-modal-actions"><button type="button" className="ld-secondary" onClick={() => setShowAdd(false)}>Not now</button><button className="ld-primary" type="submit" disabled={busy}>{busy ? "Saving…" : addMode === "habit" ? "Plant habit" : addMode === "since" ? "Keep the memory" : selectedTemplateData.id === "trip" ? "Keep the trip" : selectedTemplateData.id === "birthday" ? "Keep the birthday" : selectedTemplateData.id === "anniversary" ? "Keep the anniversary" : "Keep it"}</button></div>
             </form>
             <p className="ld-modal-footnote">Later: notes, photos, reminders, location, people, and shared days can grow around the same little object.</p>
           </section>
