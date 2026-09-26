@@ -125,7 +125,9 @@ export default function LittleDaysApp() {
   const todayKey = dateKey();
   const progress = useMemo(yearProgress, []);
   const active = items.find((item) => item.id === activeId) ?? items[0];
-  const upcoming = items.filter((item) => item.mode === "until").sort((a, b) => a.target.localeCompare(b.target));
+  const upcoming = items
+    .filter((item) => item.mode === "until" && item.target >= todayKey)
+    .sort((a, b) => a.target.localeCompare(b.target));
   const memories = items.filter((item) => item.mode === "since").sort((a, b) => b.target.localeCompare(a.target));
   const todayMarked = markedDates.includes(todayKey);
   const completedHabits = habits.filter((habit) => (habitLogs[habit.id] ?? []).includes(todayKey)).length;
@@ -650,7 +652,15 @@ export default function LittleDaysApp() {
             <form className="ld-form" onSubmit={addThing}>
               <div className="ld-form-grid">
                 <label><span className="ld-form-label">Name</span><input className="ld-input" name="title" defaultValue={selectedTemplateData.title} key={selectedTemplateData.id} placeholder="e.g. Japan" required /></label>
-                {addMode !== "habit" && <label><span className="ld-form-label">{addMode === "since" ? "When did it begin?" : "When is it?"}</span><input className="ld-input" name="target" type="date" defaultValue={addMode === "since" ? todayKey : ""} required /></label>}
+                {addMode !== "habit" && <label><span className="ld-form-label">{addMode === "since" ? "When did it begin?" : "When is it?"}</span><input
+  className="ld-input"
+  name="target"
+  type="date"
+  min={addMode === "until" ? todayKey : undefined}
+  max={addMode === "since" ? todayKey : undefined}
+  defaultValue={addMode === "since" ? todayKey : ""}
+  required
+/></label>}
               </div>
               {addMode === "habit" && <div className="ld-form-grid"><label><span className="ld-form-label">Frequency</span><select className="ld-input" name="frequency" defaultValue="daily"><option value="daily">Every day</option><option value="weekdays">Weekdays</option></select></label><label><span className="ld-form-label">Symbol</span><input className="ld-input" name="icon" defaultValue="○" maxLength={2} /></label></div>}
               <div className="ld-modal-actions"><button type="button" className="ld-secondary" onClick={() => setShowAdd(false)}>Not now</button><button className="ld-primary" type="submit" disabled={busy}>{busy ? "Saving…" : addMode === "habit" ? "Plant habit" : addMode === "since" ? "Remember it" : "Keep it"}</button></div>
