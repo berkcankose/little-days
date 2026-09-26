@@ -1136,7 +1136,7 @@ export default function LittleDaysApp() {
           const daysIntoCurrentChapter = lastAnniversaryDate ? daysSince(lastAnniversaryDate) : null;
           return (
             <div className="ld-detail-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setDetailId(null); setEditingDetail(false); } }}>
-              <article className="ld-detail-view" role="dialog" aria-modal="true" aria-label={detailItem.title}>
+              <article className={"ld-detail-view " + (relationshipYears !== null ? "relationship-detail" : "")} role="dialog" aria-modal="true" aria-label={detailItem.title}>
                 <button className="ld-detail-close" type="button" onClick={() => { setDetailId(null); setEditingDetail(false); }} aria-label="Close">×</button>
 
                 {!editingDetail ? (
@@ -1157,9 +1157,10 @@ export default function LittleDaysApp() {
                     )}
                     <div className={"ld-detail-hero " + (detailItem.mode === "since" ? "memory" : "")}>
                       <span className="ld-detail-icon">{itemIcon(detailItem)}</span>
-                      <span className="ld-eyebrow">{detailItem.mode === "until" ? (isPast ? "past little day" : "coming up") : "remembered"}</span>
-                      <h2>{detailItem.title}</h2>
-                      <p>{detailItem.recurrence === "annual" ? "Every year · " + prettyDate(detailNextDate) : prettyDate(detailItem.target)}</p>
+                      <span className="ld-eyebrow">{relationshipYears !== null ? "our story" : detailItem.mode === "until" ? (isPast ? "past little day" : "coming up") : "remembered"}</span>
+                      <h2>{relationshipYears !== null ? "Our story" : detailItem.title}</h2>
+                      <p>{relationshipYears !== null ? prettyDate(detailItem.target) + " → today" : detailItem.recurrence === "annual" ? "Every year · " + prettyDate(detailNextDate) : prettyDate(detailItem.target)}</p>
+                      {relationshipYears !== null && <span className="ld-relationship-hero-title">{detailItem.title}</span>}
                     </div>
 
                     <div className={"ld-detail-number " + (relationshipYears !== null || birthdayAge !== null ? "relationship-number" : "")}>
