@@ -326,3 +326,21 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .error-card .brand-mark { margin-bottom:24px; }
 .error-card h1 { margin:7px 0 10px; font-size:34px; line-height:1; letter-spacing:-.05em; }
 .error-card p { max-width:420px; margin:0 0 22px; color:var(--muted); font-size:13px; line-height:1.55; }
+
+.daily-mark-card {
+  margin-bottom:18px; padding:22px 24px; display:flex; align-items:center;
+  justify-content:space-between; gap:20px; background:#eef0e7;
+}
+.daily-mark-card h2 { margin:5px 0 4px; font-size:20px; letter-spacing:-.035em; }
+.daily-mark-card p { margin:0; color:var(--muted); font-size:11px; line-height:1.5; }
+.check-button {
+  flex:0 0 auto; border:0; border-radius:999px; padding:12px 17px;
+  background:var(--green-deep); color:var(--white); font-size:12px; font-weight:700;
+}
+.check-button.checked { background:#d8e2d2; color:var(--green-deep); }
+.check-button:disabled { cursor:wait; opacity:.65; }
+.daily-mark-button { min-width:145px; }
+@media (max-width:560px) {
+  .daily-mark-card { align-items:flex-start; flex-direction:column; }
+  .daily-mark-button { width:100%; }
+}
