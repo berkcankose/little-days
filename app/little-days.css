@@ -1093,3 +1093,88 @@
   .ld-memory-chapter.current{padding:14px 10px 10px}
   .ld-memory-chapter-head h4{font-size:18px}
 }
+
+
+/* --- Sparse-state composition and relationship preview --- */
+.ld-since-story{
+  position:relative;
+  display:grid;
+  grid-template-columns:1.25fr .95fr auto;
+  align-items:center;
+  gap:26px;
+  margin:18px 0 22px;
+  padding:22px 24px;
+  border:1px solid rgba(163,108,112,.14);
+  border-radius:24px;
+  background:linear-gradient(120deg,#f8eeeb 0%,#f8f4ea 100%);
+  overflow:hidden;
+}
+.ld-since-story:after{
+  content:"♡";
+  position:absolute;
+  right:28px;
+  top:-18px;
+  color:rgba(163,108,112,.075);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:120px;
+  line-height:1;
+  pointer-events:none;
+}
+.ld-since-story-copy{position:relative;z-index:1}
+.ld-since-story-copy h2{
+  margin:5px 0 6px;
+  max-width:370px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:27px;
+  line-height:1;
+  font-weight:500;
+  letter-spacing:-.05em;
+}
+.ld-since-story-copy p{margin:0;max-width:420px;color:#8c7b77;font-size:9px;line-height:1.55}
+.ld-since-story-stats{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:repeat(3,auto);
+  gap:18px;
+}
+.ld-since-story-stats>div{display:grid;gap:3px}
+.ld-since-story-stats strong{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:23px;
+  font-weight:500;
+  letter-spacing:-.045em;
+}
+.ld-since-story-stats span{max-width:82px;color:#927f7a;font-size:6.5px;line-height:1.25}
+.ld-since-story>button{
+  position:relative;
+  z-index:1;
+  justify-self:end;
+  border:0;
+  border-radius:999px;
+  padding:10px 13px;
+  background:rgba(255,253,248,.78);
+  color:#765d5d;
+  font:inherit;
+  font-size:8px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.ld-since-story>button:hover{background:#fffdf8;transform:translateY(-1px)}
+
+@media(min-width:1000px){
+  .ld-page{padding-top:46px}
+  .ld-page-heading{max-width:860px}
+  .ld-list{max-width:900px}
+  .ld-garden-page .ld-annual-garden{gap:14px}
+  .ld-garden-page .ld-month-garden{padding:20px}
+}
+@media(max-width:760px){
+  .ld-since-story{grid-template-columns:1fr;gap:18px;padding:20px}
+  .ld-since-story-stats{grid-template-columns:repeat(3,1fr);gap:10px}
+  .ld-since-story>button{justify-self:start}
+}
+@media(max-width:560px){
+  .ld-since-story-copy h2{font-size:24px}
+  .ld-since-story-stats strong{font-size:19px}
+}
