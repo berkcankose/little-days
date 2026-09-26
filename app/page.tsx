@@ -212,7 +212,6 @@ export default function Home() {
         setItems(loadedItems);
         setActiveId(loadedItems[0]?.id ?? "");
 
-        const localMarks = loadJson<string[]>(MARKS_KEY, []);
         const { data: cloudMarks, error: marksError } = await supabase
           .from("daily_marks")
           .select("mark_date")
@@ -453,7 +452,6 @@ export default function Home() {
     setItems(next);
     if (id === activeId) {
       setActiveId(next[0]?.id ?? "");
-      setChecked(false);
     }
 
     try {
