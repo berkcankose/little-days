@@ -963,3 +963,20 @@
 .ld-memory-fields{display:grid;grid-template-columns:145px 1fr;gap:8px}
 .ld-memory-add>.ld-secondary{justify-self:start;padding:9px 12px}
 @media(max-width:560px){.ld-memory-strip{grid-template-columns:1fr 1fr}.ld-memory-photo img,.ld-memory-photo-placeholder{height:120px}.ld-memory-fields{grid-template-columns:1fr}.ld-memory-add>.ld-secondary{width:100%}}
+
+
+/* --- Memory photography --- */
+.ld-detail-cover{position:relative;width:100%;height:205px;margin:-10px 0 22px;padding:0;overflow:hidden;border:0;border-radius:23px;background:var(--ld-paper-2);cursor:pointer}
+.ld-detail-cover img{width:100%;height:100%;display:block;object-fit:cover}
+.ld-detail-cover:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(25,27,23,0) 45%,rgba(25,27,23,.42))}
+.ld-detail-cover span{position:absolute;z-index:1;right:14px;bottom:12px;padding:7px 10px;border-radius:999px;background:rgba(255,253,248,.9);color:var(--ld-ink);font-size:8px;font-weight:800}
+.ld-memory-image-button{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
+.ld-memory-image-button img,.ld-memory-image-button .ld-memory-photo-placeholder{transition:transform .35s ease}
+.ld-memory-image-button:hover img{transform:scale(1.035)}
+.ld-lightbox{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:28px;background:rgba(24,26,22,.82);backdrop-filter:blur(15px)}
+.ld-lightbox>img{max-width:min(1100px,94vw);max-height:78vh;width:auto;height:auto;object-fit:contain;border-radius:15px;box-shadow:0 30px 100px rgba(0,0,0,.35)}
+.ld-lightbox-close{position:absolute;top:20px;right:20px;width:40px;height:40px;border:1px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(255,255,255,.1);color:white;font-size:22px}
+.ld-lightbox-caption{position:absolute;left:50%;bottom:25px;transform:translateX(-50%);display:grid;gap:4px;text-align:center;color:white}
+.ld-lightbox-caption span{font-size:8px;opacity:.7;text-transform:uppercase;letter-spacing:.12em}
+.ld-lightbox-caption strong{font-family:Georgia,"Times New Roman",serif;font-size:16px;font-weight:500}
+@media(max-width:560px){.ld-detail-cover{height:175px;margin-top:-4px}.ld-lightbox{padding:15px}.ld-lightbox>img{max-width:96vw;max-height:74vh}.ld-lightbox-caption{bottom:17px}}
