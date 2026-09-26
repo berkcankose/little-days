@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 type Mode = "until" | "since";
 type View = "today" | "ahead" | "since" | "garden";
 type AddMode = "until" | "since" | "habit";
+type YearView = "remaining" | "full";
 type TimeItem = {
   id: string;
   title: string;
@@ -32,7 +33,6 @@ const HABITS_KEY = "little-days-habits";
 const HABIT_LOGS_KEY = "little-days-habit-logs";
 const MODE_KEY = "little-days-modes";
 const MARKS_KEY = "little-days-marked-dates";
-const ITEM_DETAILS_KEY = "little-days-item-details";
 
 const DEFAULT_HABITS: Habit[] = [
   { id: "habit-run", title: "Move your body", frequency: "daily", icon: "○" },
@@ -121,6 +121,7 @@ export default function LittleDaysApp() {
   const [markedDates, setMarkedDates] = useState<string[]>([]);
   const [activeId, setActiveId] = useState("");
   const [view, setView] = useState<View>("today");
+  const [yearView, setYearView] = useState<YearView>("remaining");
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState<AddMode>("until");
   const [selectedTemplate, setSelectedTemplate] = useState("trip");
@@ -500,7 +501,31 @@ export default function LittleDaysApp() {
   }
 
   const selectedTemplateData = TEMPLATES.find((template) => template.id === selectedTemplate) ?? TEMPLATES[0];
-  const gardenDays = Array.from({ length: 49 }, (_, index) => shiftDate(parseDate(todayKey), index - 24));
+
+  const yearDays = useMemo(
+    () => Array.from({ length: progress.total }, (_, index) => new Date(progress.year, 0, index + 1)),
+    [progress.year, progress.total],
+  );
+
+  const remainingYearDays = yearDays.slice(Math.max(0, progress.passed - 1));
+  const yearStartOffset = new Date(progress.year, 0, 1).getDay();
+  const fullYearCells = Array.from({ length: 53 * 7 }, (_, index) => {
+    const dayIndex = index - yearStartOffset;
+    return dayIndex >= 0 && dayIndex < progress.total ? yearDays[dayIndex] : null;
+  });
+
+  const gardenMonths = Array.from({ length: 12 }, (_, month) => {
+    const monthStart = new Date(progress.year, month, 1);
+    const days = new Date(progress.year, month + 1, 0).getDate();
+    const offset = monthStart.getDay();
+    return {
+      month,
+      label: new Intl.DateTimeFormat("en", { month: "long" }).format(monthStart),
+      cells: Array.from({ length: offset + days }, (_, index) => (
+        index < offset ? null : new Date(progress.year, month, index - offset + 1)
+      )),
+    };
+  });
 
   if (loading) {
     return <main className="ld-shell"><div className="ld-frame"><div className="ld-loading"><span>✿</span><p>Growing your little garden…</p></div></div></main>;
@@ -527,65 +552,112 @@ export default function LittleDaysApp() {
           <button className="ld-add-button" type="button" onClick={() => openAdd()}>+ Add</button>
         </header>
 
+
         {view === "today" && (
-          <section className="ld-page">
-            <div className="ld-intro">
+          <section className="ld-page ld-home">
+            <div className="ld-home-top">
               <div>
-                <span className="ld-eyebrow">today · {shortDate(todayKey)}</span>
-                <h1>A little place for the days that matter.</h1>
-                <p>Look ahead. Notice today. Remember what began.</p>
+                <span className="ld-eyebrow">this year · {progress.year}</span>
+                <h1>Make this year visible.</h1>
+                <p>{shortDate(todayKey)} · {progress.total - progress.passed} days still ahead.</p>
               </div>
-              <button className={`ld-today-mark ${todayMarked ? "done" : ""}`} type="button" onClick={() => toggleMark(todayKey)} disabled={busy}>
+              <button className={"ld-today-mark " + (todayMarked ? "done" : "")} type="button" onClick={() => toggleMark(todayKey)} disabled={busy}>
                 <span>{todayMarked ? "✓" : "○"}</span>
-                {todayMarked ? "Today is remembered" : "Mark today"}
+                {todayMarked ? "Today remembered" : "Mark today"}
               </button>
             </div>
 
-            <div className="ld-hero-grid">
-              <article className="ld-card ld-year-card">
-                <div className="ld-card-top"><span>this year</span><span>{progress.percent}%</span></div>
-                <strong>{progress.year}</strong>
-                <div className="ld-year-line"><span style={{ width: `${progress.percent}%` }} /></div>
-                <div className="ld-card-meta"><span>{progress.passed} days passed</span><span>{progress.total - progress.passed} ahead</span></div>
-              </article>
-
-              <article className="ld-card ld-feature-card">
-                <div className="ld-feature-copy">
-                  <span className="ld-eyebrow">next little day</span>
-                  <h2>{upcoming[0]?.title ?? "Nothing yet"}</h2>
-                  {upcoming[0] ? (
-                    <>
-                      <strong>{daysUntil(upcoming[0].target)}</strong>
-                      <span>days to go · {prettyDate(upcoming[0].target)}</span>
-                    </>
-                  ) : <p>Add something to look forward to.</p>}
+            <article className="ld-year-focus">
+              <div className="ld-year-focus-top">
+                <div>
+                  <span className="ld-eyebrow">{progress.year} / this year</span>
+                  <div className="ld-year-number">{progress.year}</div>
                 </div>
-                <div className="ld-feature-orbit"><i /><i /><i /></div>
-              </article>
-            </div>
+                <div className="ld-year-left">
+                  <strong>{progress.total - progress.passed}</strong>
+                  <span>days left</span>
+                </div>
+              </div>
 
-            <div className="ld-section-row">
-              <div><span className="ld-eyebrow">look ahead</span><h2>What are you waiting for?</h2></div>
-              <button className="ld-link-button" type="button" onClick={() => go("ahead")}>See all ↗</button>
-            </div>
-
-            <div className="ld-mini-grid">
-              {upcoming.slice(0, 3).map((item) => (
-                <button className="ld-object-card" key={item.id} type="button" onClick={() => { setActiveId(item.id); go("ahead"); }}>
-                  <span className="ld-object-icon">{itemIcon(item)}</span>
-                  <span><strong>{item.title}</strong><small>{daysUntil(item.target)} days · {shortDate(item.target)}</small></span>
+              <div className="ld-year-switch" role="tablist" aria-label="Year tracker view">
+                <button type="button" className={yearView === "remaining" ? "active" : ""} onClick={() => setYearView("remaining")}>
+                  Days remaining
                 </button>
-              ))}
-              <button className="ld-object-card ld-empty-object" type="button" onClick={() => openAdd("until")}><span className="ld-object-icon">+</span><span><strong>Keep a new date</strong><small>trip, birthday, deadline, anything</small></span></button>
+                <button type="button" className={yearView === "full" ? "active" : ""} onClick={() => setYearView("full")}>
+                  Full year
+                </button>
+              </div>
+
+              {yearView === "remaining" ? (
+                <div className="ld-remaining-tracker">
+                  <div className="ld-tracker-labels">
+                    <span>{shortDate(todayKey)}</span>
+                    <span>Dec 31</span>
+                  </div>
+                  <div className="ld-remaining-dots" aria-label="Days from today through the end of the year">
+                    {remainingYearDays.map((day) => {
+                      const key = dateKey(day);
+                      return <span key={key} className={key === todayKey ? "today" : ""} title={prettyDate(key)} />;
+                    })}
+                  </div>
+                  <p><strong>{progress.total - progress.passed}</strong> days after today · {remainingYearDays.length} dots from today to the end of {progress.year}</p>
+                </div>
+              ) : (
+                <div className="ld-full-year-tracker">
+                  <div className="ld-full-year-months" aria-hidden="true">
+                    {yearDays.filter((day) => day.getDate() === 1).map((day) => (
+                      <span key={dateKey(day)}>{new Intl.DateTimeFormat("en", { month: "short" }).format(day)}</span>
+                    ))}
+                  </div>
+                  <div className="ld-full-year-dots" aria-label="Full year tracker">
+                    {fullYearCells.map((day, index) => {
+                      if (!day) return <i key={"blank-" + index} className="blank" />;
+                      const key = dateKey(day);
+                      const state = key < todayKey ? "passed" : key === todayKey ? "today" : "ahead";
+                      return <i key={key} className={state} title={prettyDate(key)} />;
+                    })}
+                  </div>
+                  <div className="ld-full-year-legend">
+                    <span><i className="passed" />passed</span>
+                    <span><i className="today" />today</span>
+                    <span><i className="ahead" />ahead</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="ld-year-focus-meta">
+                <span>{progress.passed} days passed</span>
+                <span>{progress.percent}% of {progress.year}</span>
+                <span>{progress.total - progress.passed} ahead</span>
+              </div>
+            </article>
+
+            <div className="ld-home-next">
+              <div className="ld-section-row compact">
+                <div><span className="ld-eyebrow">look ahead</span><h2>Next little days</h2></div>
+                <button className="ld-link-button" type="button" onClick={() => go("ahead")}>See all ↗</button>
+              </div>
+              <div className="ld-mini-grid">
+                {upcoming.slice(0, 3).map((item) => (
+                  <button className="ld-object-card" key={item.id} type="button" onClick={() => { setActiveId(item.id); go("ahead"); }}>
+                    <span className="ld-object-icon">{itemIcon(item)}</span>
+                    <span><strong>{item.title}</strong><small>{daysUntil(item.target)} days · {shortDate(item.target)}</small></span>
+                  </button>
+                ))}
+                <button className="ld-object-card ld-empty-object" type="button" onClick={() => openAdd("until")}>
+                  <span className="ld-object-icon">+</span>
+                  <span><strong>Keep a new date</strong><small>trip, birthday, deadline, anything</small></span>
+                </button>
+              </div>
             </div>
 
-            <div className="ld-two-column">
+            <div className="ld-home-lower">
               <article className="ld-card ld-habit-card">
                 <div className="ld-section-row compact"><div><span className="ld-eyebrow">live today</span><h2>Little habits</h2></div><span className="ld-count">{completedHabits}/{habits.length}</span></div>
                 <div className="ld-habits">
                   {habits.map((habit) => {
                     const done = (habitLogs[habit.id] ?? []).includes(todayKey);
-                    return <button key={habit.id} type="button" className={`ld-habit ${done ? "done" : ""}`} onClick={() => toggleHabit(habit.id)}><span>{done ? "✓" : habit.icon}</span><strong>{habit.title}</strong><small>{habit.frequency === "daily" ? "daily" : "weekdays"}</small></button>;
+                    return <button key={habit.id} type="button" className={"ld-habit " + (done ? "done" : "")} onClick={() => toggleHabit(habit.id)}><span>{done ? "✓" : habit.icon}</span><strong>{habit.title}</strong><small>{habit.frequency === "daily" ? "daily" : "weekdays"}</small></button>;
                   })}
                 </div>
                 <button className="ld-inline-add" type="button" onClick={() => openAdd("habit")}>+ add a small habit</button>
@@ -594,16 +666,11 @@ export default function LittleDaysApp() {
               <article className="ld-card ld-memory-card">
                 <div className="ld-section-row compact"><div><span className="ld-eyebrow">look back</span><h2>Remembered</h2></div><span className="ld-count">{markedDates.length}</span></div>
                 <div className="ld-memory-preview">
-                  <div className="ld-memory-flower">✿</div>
-                  <div><strong>{todayMarked ? "Today is in the garden." : "Today is still a bud."}</strong><p>{markedDates.length ? `${markedDates.length} little days have been noticed.` : "Mark a day and it will become part of your garden."}</p></div>
+                  <div className="ld-memory-flower">{todayMarked ? "✿" : "○"}</div>
+                  <div><strong>{todayMarked ? "Today is in the garden." : "Today is still a bud."}</strong><p>{markedDates.length ? markedDates.length + " little days have been noticed." : "Mark a day and it will become part of your garden."}</p></div>
                 </div>
                 <button className="ld-inline-add" type="button" onClick={() => go("garden")}>Open the garden ↗</button>
               </article>
-            </div>
-
-            <div className="ld-year-note">
-              <span>✿</span>
-              <div><strong>{progress.year} is moving.</strong><p>{progress.total - progress.passed} days remain. You do not need to fill them. Just notice a few.</p></div>
             </div>
           </section>
         )}
@@ -646,28 +713,53 @@ export default function LittleDaysApp() {
           </section>
         )}
 
+
         {view === "garden" && (
-          <section className="ld-page">
-            <div className="ld-page-heading garden-heading"><span className="ld-eyebrow">your little garden</span><h1>Days become flowers.</h1><p>Remembered days bloom. Today stays a bud. Days ahead wait as seeds.</p><span className="ld-garden-count">{markedDates.length} remembered days</span></div>
-            <div className="ld-garden-card">
-              <div className="ld-garden-grid">
-                {gardenDays.map((day) => {
-                  const key = dateKey(day);
-                  const marked = markedDates.includes(key);
-                  const today = key === todayKey;
-                  const future = key > todayKey;
-                  const state = today ? "today" : marked ? "marked" : future ? "future" : "past";
-                  return <button key={key} type="button" className={`ld-garden-day ${state} ${selectedDate === key ? "selected" : ""}`} onClick={() => setSelectedDate(key)} aria-label={`${gardenDateLabel(day)}, ${state}`}><span>{gardenDateLabel(day)}</span><i /></button>;
-                })}
-              </div>
-              <div className="ld-garden-legend"><span><i className="marked" />remembered</span><span><i className="today" />today</span><span><i className="seed" />ahead</span></div>
-              {selectedDay && (
-                <div className="ld-garden-detail">
-                  <div><span className="ld-eyebrow">{selectedDate === todayKey ? "today" : markedDates.includes(selectedDate!) ? "remembered" : selectedDate! > todayKey ? "not here yet" : "a quiet day"}</span><h2>{gardenDateLabel(selectedDay)}</h2><p>{selectedDate === todayKey ? (todayMarked ? "You noticed today. Keep it small." : "Today is still a bud.") : markedDates.includes(selectedDate!) ? "This day is part of your garden." : selectedDate! > todayKey ? "This day is still waiting for you." : "No mark was left. That is okay."}</p></div>
-                  {selectedDate! <= todayKey && <button type="button" className={`ld-primary ${markedDates.includes(selectedDate!) ? "soft" : ""}`} onClick={() => toggleMark(selectedDate!)} disabled={busy}>{markedDates.includes(selectedDate!) ? "✓ Remembered" : "Remember this day"}</button>}
-                </div>
-              )}
+          <section className="ld-page ld-garden-page">
+            <div className="ld-page-heading garden-heading">
+              <span className="ld-eyebrow">your little garden · {progress.year}</span>
+              <h1>Days become flowers.</h1>
+              <p>Remembered days bloom. Today is a bud. The garden begins at January 1, not at an arbitrary window.</p>
+              <span className="ld-garden-count">{markedDates.length} remembered days</span>
             </div>
+
+            <div className="ld-annual-garden">
+              {gardenMonths.map((month) => (
+                <article className="ld-month-garden" key={month.month}>
+                  <div className="ld-month-garden-head">
+                    <strong>{month.label}</strong>
+                    <span>{month.cells.filter(Boolean).length} days</span>
+                  </div>
+                  <div className="ld-month-weekdays">
+                    {["S","M","T","W","T","F","S"].map((day, index) => <span key={day + "-" + index}>{day}</span>)}
+                  </div>
+                  <div className="ld-month-days">
+                    {month.cells.map((day, index) => {
+                      if (!day) return <i className="blank" key={"blank-" + month.month + "-" + index} />;
+                      const key = dateKey(day);
+                      const marked = markedDates.includes(key);
+                      const today = key === todayKey;
+                      const future = key > todayKey;
+                      const state = (today ? "today" : future ? "future" : "past") + (marked ? " marked" : "");
+                      return <button key={key} type="button" className={state} onClick={() => setSelectedDate(key)} aria-label={gardenDateLabel(day) + ", " + (marked ? "remembered" : today ? "today" : future ? "ahead" : "unmarked")}><span>{day.getDate()}</span><i /></button>;
+                    })}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="ld-garden-legend">
+              <span><i className="marked" />remembered</span>
+              <span><i className="today" />today</span>
+              <span><i className="seed" />ahead</span>
+            </div>
+
+            {selectedDay && (
+              <div className="ld-garden-detail">
+                <div><span className="ld-eyebrow">{selectedDate === todayKey ? "today" : markedDates.includes(selectedDate!) ? "remembered" : selectedDate! > todayKey ? "not here yet" : "a quiet day"}</span><h2>{gardenDateLabel(selectedDay)}</h2><p>{selectedDate === todayKey ? (todayMarked ? "You noticed today. Keep it small." : "Today is still a bud.") : markedDates.includes(selectedDate!) ? "This day is part of your garden." : selectedDate! > todayKey ? "This day is still waiting for you." : "No mark was left. That is okay."}</p></div>
+                {selectedDate! <= todayKey && <button type="button" className={"ld-primary " + (markedDates.includes(selectedDate!) ? "soft" : "")} onClick={() => toggleMark(selectedDate!)} disabled={busy}>{markedDates.includes(selectedDate!) ? "✓ Remembered" : "Remember this day"}</button>}
+              </div>
+            )}
           </section>
         )}
 
