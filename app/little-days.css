@@ -1016,3 +1016,20 @@
 
 .ld-personal-card:before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(circle at 86% 18%,rgba(255,255,255,.55),transparent 34%)}
 .ld-personal-copy p{max-width:420px}
+
+
+/* --- The couple's three dates --- */
+.ld-our-dates{margin-top:34px}
+.ld-our-dates .ld-section-row{margin-bottom:12px}
+.ld-our-dates .ld-section-row h2{margin:3px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:27px;font-weight:500;letter-spacing:-.05em}
+.ld-our-dates-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.ld-our-date{display:flex;align-items:center;gap:10px;min-width:0;padding:13px 12px;border:1px solid var(--ld-line);border-radius:18px;background:var(--ld-paper);text-align:left;cursor:pointer}
+.ld-our-date:hover{transform:translateY(-1px);box-shadow:0 9px 25px rgba(41,42,37,.06)}
+.ld-our-date-symbol{width:31px;height:31px;flex:0 0 31px;display:grid;place-items:center;border-radius:11px;background:#eee8dc;color:#9c7655;font-size:14px}
+.ld-our-date.love{background:#f6e9e7;border-color:rgba(163,108,112,.16)}
+.ld-our-date.love .ld-our-date-symbol{background:#fff8f5;color:#a36c70}
+.ld-our-date-copy{display:grid;min-width:0;gap:2px}
+.ld-our-date-copy small{color:var(--ld-muted);font-size:6.5px;font-weight:850;letter-spacing:.1em}
+.ld-our-date-copy strong{overflow:hidden;color:var(--ld-ink);font-size:12px;line-height:1.05;text-overflow:ellipsis;white-space:nowrap}
+.ld-our-date-copy em{color:var(--ld-muted);font-size:7.5px;font-style:normal}
+@media(max-width:720px){.ld-our-dates-grid{grid-template-columns:1fr}.ld-our-date{padding:14px}.ld-our-date-copy strong{font-size:13px}}
