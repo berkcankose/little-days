@@ -142,6 +142,7 @@ export default function LittleDaysApp() {
   const [cloudHabitsReady, setCloudHabitsReady] = useState(false);
   const [memoriesByItem, setMemoriesByItem] = useState<Record<string, ItemMemory[]>>({});
   const [addingMemory, setAddingMemory] = useState(false);
+  const [lightboxMemory, setLightboxMemory] = useState<ItemMemory | null>(null);
 
   const todayKey = dateKey();
   const progress = useMemo(yearProgress, []);
@@ -336,6 +337,16 @@ export default function LittleDaysApp() {
     saveJson(HABITS_KEY, habits);
     saveJson(HABIT_LOGS_KEY, habitLogs);
   }, [habits, habitLogs]);
+  useEffect(() => {
+    if (!lightboxMemory) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightboxMemory(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightboxMemory]);
+
+
 
   async function toggleMark(targetDate: string) {
     if (busy || targetDate > todayKey) return;
@@ -938,6 +949,20 @@ export default function LittleDaysApp() {
 
                 {!editingDetail ? (
                   <>
+                    {(memoriesByItem[detailItem.id] ?? []).find((memory) => memory.photoUrl) && (
+                      <button
+                        type="button"
+                        className="ld-detail-cover"
+                        onClick={() => {
+                          const cover = (memoriesByItem[detailItem.id] ?? []).find((memory) => memory.photoUrl);
+                          if (cover) setLightboxMemory(cover);
+                        }}
+                        aria-label="Open memory photo"
+                      >
+                        <img src={(memoriesByItem[detailItem.id] ?? []).find((memory) => memory.photoUrl)?.photoUrl ?? ""} alt="" />
+                        <span>Open memory</span>
+                      </button>
+                    )}
                     <div className={"ld-detail-hero " + (detailItem.mode === "since" ? "memory" : "")}>
                       <span className="ld-detail-icon">{itemIcon(detailItem)}</span>
                       <span className="ld-eyebrow">{detailItem.mode === "until" ? (isPast ? "past little day" : "coming up") : "remembered"}</span>
@@ -975,7 +1000,9 @@ export default function LittleDaysApp() {
                         <div className="ld-memory-strip">
                           {(memoriesByItem[detailItem.id] ?? []).map((memory) => (
                             <figure key={memory.id} className="ld-memory-photo">
-                              {memory.photoUrl ? <img src={memory.photoUrl} alt={memory.caption || "A memory"} /> : <div className="ld-memory-photo-placeholder">✿</div>}
+                              <button type="button" className="ld-memory-image-button" onClick={() => setLightboxMemory(memory)} aria-label={"Open " + (memory.caption || "memory photo")}>
+                                {memory.photoUrl ? <img src={memory.photoUrl} alt={memory.caption || "A memory"} /> : <div className="ld-memory-photo-placeholder">✿</div>}
+                              </button>
                               <figcaption>
                                 <span>{shortDate(memory.memoryDate)}</span>
                                 <strong>{memory.caption || "A quiet moment."}</strong>
@@ -1031,6 +1058,17 @@ export default function LittleDaysApp() {
             </div>
           );
         })()}
+
+        {lightboxMemory && (
+          <div className="ld-lightbox" role="dialog" aria-modal="true" aria-label={lightboxMemory.caption || "Memory photo"} onMouseDown={(event) => { if (event.target === event.currentTarget) setLightboxMemory(null); }}>
+            <button type="button" className="ld-lightbox-close" onClick={() => setLightboxMemory(null)} aria-label="Close">×</button>
+            {lightboxMemory.photoUrl && <img src={lightboxMemory.photoUrl} alt={lightboxMemory.caption || "A memory"} />}
+            <div className="ld-lightbox-caption">
+              <span>{prettyDate(lightboxMemory.memoryDate)}</span>
+              <strong>{lightboxMemory.caption || "A quiet moment."}</strong>
+            </div>
+          </div>
+        )}
 
         <footer className="ld-footer"><span>Little Days · a small ritual around time</span><button type="button" onClick={signOut}>Sign out</button><span>Made for two people who keep choosing each other.</span></footer>
       </div>
