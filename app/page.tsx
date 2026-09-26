@@ -212,6 +212,7 @@ export default function Home() {
         setItems(loadedItems);
         setActiveId(loadedItems[0]?.id ?? "");
 
+        const localMarks = loadJson<string[]>(MARKS_KEY, []);
         const { data: cloudMarks, error: marksError } = await supabase
           .from("daily_marks")
           .select("mark_date")
@@ -220,18 +221,16 @@ export default function Home() {
         let loadedMarks: string[] = [];
 
         if (!marksError && cloudMarks) {
-          loadedMarks = cloudMarks.map((mark) => mark.mark_date);
+          loadedMarks = [...new Set([...localMarks, ...cloudMarks.map((mark) => mark.mark_date)])];
         } else if (loadedItems[0]) {
           const { data: legacyMarks } = await supabase
             .from("check_ins")
             .select("check_date")
             .order("check_date", { ascending: true });
 
-          loadedMarks = [...new Set((legacyMarks ?? []).map((mark) => mark.check_date))];
-        }
-
-        if (!loadedMarks.length) {
-          loadedMarks = loadJson<string[]>(MARKS_KEY, []);
+          loadedMarks = [...new Set([...localMarks, ...(legacyMarks ?? []).map((mark) => mark.check_date)])];
+        } else {
+          loadedMarks = localMarks;
         }
 
         if (!cancelled) {
