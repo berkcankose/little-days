@@ -37,7 +37,7 @@ type Template = {
   title: string;
 };
 
-const DEFAULT: TimeItem = { id: "", title: "2027", target: "2027-01-01", mode: "until", category: "milestone", note: "", recurrence: "once", recurrence: "once" };
+const DEFAULT: TimeItem = { id: "", title: "2027", target: "2027-01-01", mode: "until", category: "milestone", note: "", recurrence: "once" };
 const STORAGE_KEY = "little-days-time-items";
 const HABITS_KEY = "little-days-habits";
 const HABIT_LOGS_KEY = "little-days-habit-logs";
@@ -292,7 +292,7 @@ export default function LittleDaysApp() {
               .single();
 
             if (error) throw error;
-            loadedItems = [{ id: data.id, title: data.title, target: data.target_date, mode: "until", category: "milestone", note: "" }];
+            loadedItems = [{ id: data.id, title: data.title, target: data.target_date, mode: "until", category: "milestone", note: "", recurrence: "once" }];
           }
         }
 
