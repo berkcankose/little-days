@@ -222,6 +222,7 @@ export default function LittleDaysApp() {
       return aDate.localeCompare(bDate);
     });
   const memories = items.filter((item) => item.mode === "since").sort((a, b) => b.target.localeCompare(a.target));
+  const relationshipItem = items.find((item) => item.category === "love" && item.mode === "since" && item.recurrence === "annual") ?? null;
   const todayMarked = markedDates.includes(todayKey);
   const completedHabits = habits.filter((habit) => (habitLogs[habit.id] ?? []).includes(todayKey)).length;
   const selectedDay = selectedDate ? parseDate(selectedDate) : null;
@@ -1023,6 +1024,25 @@ export default function LittleDaysApp() {
               <p>Beginnings, anniversaries, firsts, and little memories that keep going.</p>
               <button className="ld-primary" type="button" onClick={() => openAdd("since")}>+ Remember a day</button>
             </div>
+
+            {relationshipItem && (
+              <article className="ld-since-story" role="region" aria-label="Our relationship">
+                <div className="ld-since-story-copy">
+                  <span className="ld-eyebrow">one story among the days</span>
+                  <h2>Still becoming a shared history.</h2>
+                  <p>Since {prettyDate(relationshipItem.target)}, the ordinary days have become part of the same story.</p>
+                </div>
+                <div className="ld-since-story-stats">
+                  <div><strong>{completedYearsSince(relationshipItem.target)}</strong><span>years married</span></div>
+                  <div><strong>{daysSince(relationshipItem.target).toLocaleString()}</strong><span>days together</span></div>
+                  <div><strong>{daysUntilAnnual(relationshipItem.target)}</strong><span>days to next anniversary</span></div>
+                </div>
+                <button type="button" onClick={() => { setActiveId(relationshipItem.id); setDetailId(relationshipItem.id); }}>
+                  Open our story ↗
+                </button>
+              </article>
+            )}
+
             <div className="ld-list">
               {memories.length === 0 && <div className="ld-empty-state"><span>✿</span><h2>Nothing remembered yet.</h2><p>Add a day that started something.</p><button className="ld-primary" onClick={() => openAdd("since")} type="button">Remember a day</button></div>}
               {memories.map((item) => (
