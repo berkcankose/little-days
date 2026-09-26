@@ -1077,3 +1077,19 @@
   .ld-relationship-stats strong{font-size:18px}
   .ld-relationship-stats span{font-size:6.5px}
 }
+
+
+/* --- Relationship memory chapters --- */
+.ld-memory-chapters{display:grid;gap:19px;margin-top:16px}
+.ld-memory-chapter{padding:14px 0 2px}
+.ld-memory-chapter.current{padding:16px 14px 12px;border:1px solid rgba(163,108,112,.13);border-radius:20px;background:rgba(248,238,235,.48)}
+.ld-memory-chapter-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:9px}
+.ld-memory-chapter-head h4{margin:4px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:19px;font-weight:500;letter-spacing:-.04em}
+.ld-memory-chapter-head>span{color:var(--ld-muted);font-size:8px;white-space:nowrap}
+.ld-memory-chapter .ld-memory-strip{margin-top:0}
+.ld-memory-chapter .ld-memory-photo{border-radius:15px}
+.ld-memory-chapter.current .ld-memory-photo{background:rgba(255,253,248,.82)}
+@media(max-width:560px){
+  .ld-memory-chapter.current{padding:14px 10px 10px}
+  .ld-memory-chapter-head h4{font-size:18px}
+}
