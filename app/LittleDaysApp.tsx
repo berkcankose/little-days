@@ -49,7 +49,7 @@ const DEFAULT_HABITS: Habit[] = [
 
 const TEMPLATES: Template[] = [
   { id: "birthday", label: "Birthday", description: "Something to look forward to", icon: "✦", mode: "until", title: "Birthday" },
-  { id: "anniversary", label: "Anniversary", description: "Keep a special date close", icon: "♡", mode: "until", title: "Our anniversary" },
+  { id: "anniversary", label: "Anniversary", description: "Keep a special date close", icon: "♡", mode: "since", title: "Our anniversary" },
   { id: "trip", label: "A trip", description: "A place waiting ahead", icon: "↗", mode: "until", title: "A trip" },
   { id: "holiday", label: "Holiday", description: "A day worth anticipating", icon: "☼", mode: "until", title: "Holiday" },
   { id: "memory", label: "A little memory", description: "Remember when it began", icon: "✿", mode: "since", title: "A little memory" },
@@ -1089,7 +1089,6 @@ export default function LittleDaysApp() {
   className="ld-input"
   name="target"
   type="date"
-  min={addMode === "until" ? todayKey : undefined}
   max={addMode === "since" ? todayKey : undefined}
   defaultValue={addMode === "since" ? todayKey : ""}
   required
