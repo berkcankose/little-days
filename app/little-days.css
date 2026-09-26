@@ -989,3 +989,7 @@
 .ld-anniversary-strip>div{display:grid;gap:5px}
 .ld-anniversary-strip strong{font-family:Georgia,"Times New Roman",serif;font-size:18px;font-weight:500;letter-spacing:-.03em}
 .ld-anniversary-strip>span{color:#8c7b77;font-size:9px;text-align:right}
+
+
+.birthday-strip{background:#f2ead9;border-color:rgba(156,109,68,.16)}
+.birthday-strip strong{color:#805d3f}
