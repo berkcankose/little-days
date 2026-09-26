@@ -641,3 +641,80 @@ button { cursor: pointer; }
   .auth-card { padding: 30px 24px; border-radius: 24px; }
   .auth-card h1 { font-size: 32px; }
 }
+
+
+.loading-card {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.countdown-row {
+  cursor: pointer;
+  transition: background .18s ease, transform .18s ease;
+  border-radius: 14px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.countdown-row:hover {
+  background: rgba(255,255,255,.42);
+}
+
+.countdown-row.selected {
+  background: rgba(230,235,223,.55);
+}
+
+.row-delete {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity .18s ease, background .18s ease;
+}
+
+.countdown-row:hover .row-delete,
+.countdown-row:focus-within .row-delete {
+  opacity: 1;
+}
+
+.row-delete:hover {
+  background: rgba(41,42,37,.08);
+  color: var(--ink);
+}
+
+.check-button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.footer-signout {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 0;
+}
+
+.footer-signout:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+@media (max-width: 520px) {
+  .row-delete {
+    opacity: 1;
+  }
+
+  .footer {
+    align-items: flex-start;
+  }
+}
