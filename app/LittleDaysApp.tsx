@@ -17,6 +17,14 @@ type TimeItem = {
   note: string;
 };
 type Habit = { id: string; title: string; frequency: "daily" | "weekdays"; icon: string };
+type ItemMemory = {
+  id: string;
+  timeItemId: string;
+  memoryDate: string;
+  caption: string;
+  photoPath: string | null;
+  photoUrl: string | null;
+};
 
 type Template = {
   id: string;
@@ -132,6 +140,8 @@ export default function LittleDaysApp() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cloudHabitsReady, setCloudHabitsReady] = useState(false);
+  const [memoriesByItem, setMemoriesByItem] = useState<Record<string, ItemMemory[]>>({});
+  const [addingMemory, setAddingMemory] = useState(false);
 
   const todayKey = dateKey();
   const progress = useMemo(yearProgress, []);
@@ -281,6 +291,34 @@ export default function LittleDaysApp() {
         setMarkedDates(loadedMarks);
         saveJson(STORAGE_KEY, loadedItems);
         saveJson(MARKS_KEY, loadedMarks);
+
+        const { data: cloudMemories, error: memoriesError } = await supabase
+          .from("item_memories")
+          .select("id,time_item_id,memory_date,caption,photo_path,created_at")
+          .order("memory_date", { ascending: false });
+
+        if (!memoriesError && cloudMemories) {
+          const grouped: Record<string, ItemMemory[]> = {};
+          for (const memory of cloudMemories) {
+            let photoUrl: string | null = null;
+            if (memory.photo_path) {
+              const { data: signed } = await supabase.storage
+                .from("little-days")
+                .createSignedUrl(memory.photo_path, 60 * 60);
+              photoUrl = signed?.signedUrl ?? null;
+            }
+            const entry: ItemMemory = {
+              id: memory.id,
+              timeItemId: memory.time_item_id,
+              memoryDate: memory.memory_date,
+              caption: memory.caption || "",
+              photoPath: memory.photo_path,
+              photoUrl,
+            };
+            grouped[memory.time_item_id] = [...(grouped[memory.time_item_id] ?? []), entry];
+          }
+          setMemoriesByItem(grouped);
+        }
       } catch (error) {
         if (!cancelled) setToast(error instanceof Error ? error.message : "Something went wrong while opening Little Days.");
       } finally {
@@ -466,6 +504,85 @@ export default function LittleDaysApp() {
   }
 
 
+
+  async function addMemory(timeItemId: string, form: FormData) {
+    if (addingMemory) return;
+    const caption = String(form.get("caption") || "").trim();
+    const memoryDate = String(form.get("memoryDate") || todayKey);
+    const file = form.get("photo");
+
+    if (!(file instanceof File) || !file.size) {
+      flash("Choose a photo first.");
+      return;
+    }
+
+    setAddingMemory(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) throw new Error("Your session has expired.");
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const path = userData.user.id + "/" + timeItemId + "/" + crypto.randomUUID() + "-" + safeName;
+
+      const { error: uploadError } = await supabase.storage
+        .from("little-days")
+        .upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type || undefined });
+      if (uploadError) throw uploadError;
+
+      const { data, error } = await supabase.from("item_memories")
+        .insert({
+          user_id: userData.user.id,
+          time_item_id: timeItemId,
+          memory_date: memoryDate,
+          caption,
+          photo_path: path,
+        })
+        .select("id,time_item_id,memory_date,caption,photo_path")
+        .single();
+
+      if (error) {
+        await supabase.storage.from("little-days").remove([path]);
+        throw error;
+      }
+
+      const { data: signed } = await supabase.storage.from("little-days").createSignedUrl(path, 60 * 60);
+      const entry: ItemMemory = {
+        id: data.id,
+        timeItemId: data.time_item_id,
+        memoryDate: data.memory_date,
+        caption: data.caption || "",
+        photoPath: data.photo_path,
+        photoUrl: signed?.signedUrl ?? null,
+      };
+      setMemoriesByItem((current) => ({
+        ...current,
+        [timeItemId]: [entry, ...(current[timeItemId] ?? [])],
+      }));
+      flash("A little memory was saved.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Could not save that memory.");
+    } finally {
+      setAddingMemory(false);
+    }
+  }
+
+  async function deleteMemory(memory: ItemMemory) {
+    if (!window.confirm("Remove this memory?")) return;
+    try {
+      const { error } = await supabase.from("item_memories").delete().eq("id", memory.id);
+      if (error) throw error;
+      if (memory.photoPath) {
+        await supabase.storage.from("little-days").remove([memory.photoPath]);
+      }
+      setMemoriesByItem((current) => ({
+        ...current,
+        [memory.timeItemId]: (current[memory.timeItemId] ?? []).filter((entry) => entry.id !== memory.id),
+      }));
+      flash("Memory removed.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "Could not remove that memory.");
+    }
+  }
 
   async function updateItem(id: string, title: string, target: string, note: string, category: string) {
     if (busy || !title.trim() || !target) return;
@@ -846,6 +963,46 @@ export default function LittleDaysApp() {
                     <div className="ld-detail-note">
                       <span className="ld-eyebrow">a little note</span>
                       <p>{detailItem.note || "Nothing written yet. You can add a small note about why this day matters."}</p>
+                    </div>
+
+                    <div className="ld-detail-memories">
+                      <div className="ld-detail-section-head">
+                        <div><span className="ld-eyebrow">little memories</span><h3>Keep a moment.</h3></div>
+                        <span>{(memoriesByItem[detailItem.id] ?? []).length}</span>
+                      </div>
+
+                      {(memoriesByItem[detailItem.id] ?? []).length > 0 && (
+                        <div className="ld-memory-strip">
+                          {(memoriesByItem[detailItem.id] ?? []).map((memory) => (
+                            <figure key={memory.id} className="ld-memory-photo">
+                              {memory.photoUrl ? <img src={memory.photoUrl} alt={memory.caption || "A memory"} /> : <div className="ld-memory-photo-placeholder">✿</div>}
+                              <figcaption>
+                                <span>{shortDate(memory.memoryDate)}</span>
+                                <strong>{memory.caption || "A quiet moment."}</strong>
+                                <button type="button" onClick={() => deleteMemory(memory)}>Remove</button>
+                              </figcaption>
+                            </figure>
+                          ))}
+                        </div>
+                      )}
+
+                      <form className="ld-memory-add" onSubmit={(event) => {
+                        event.preventDefault();
+                        void addMemory(detailItem.id, new FormData(event.currentTarget));
+                        event.currentTarget.reset();
+                      }}>
+                        <label className="ld-memory-upload">
+                          <span>＋</span>
+                          <strong>Add a photo</strong>
+                          <small>One moment at a time.</small>
+                          <input type="file" name="photo" accept="image/*" required />
+                        </label>
+                        <div className="ld-memory-fields">
+                          <input className="ld-input" type="date" name="memoryDate" defaultValue={todayKey} />
+                          <input className="ld-input" name="caption" placeholder="A tiny caption (optional)" />
+                        </div>
+                        <button className="ld-secondary" type="submit" disabled={addingMemory}>{addingMemory ? "Saving…" : "Save memory"}</button>
+                      </form>
                     </div>
 
                     <div className="ld-detail-actions">
