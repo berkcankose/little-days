@@ -85,6 +85,12 @@ function daysSince(target: string) {
   return Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
 }
 
+function birthdayAgeOnNextOccurrence(target: string) {
+  const birth = parseDate(target);
+  const occurrence = annualOccurrence(target);
+  return Math.max(0, occurrence.getFullYear() - birth.getFullYear());
+}
+
 function completedYearsSince(target: string) {
   const start = parseDate(target);
   const today = parseDate(dateKey());
@@ -280,7 +286,6 @@ export default function LittleDaysApp() {
             category: "life",
             recurrence: "once",
             note: "",
-            recurrence: "once",
           }));
         }
 
@@ -984,6 +989,7 @@ export default function LittleDaysApp() {
           const isPast = detailItem.mode === "until" && detailItem.recurrence !== "annual" && detailItem.target < todayKey;
           const relationshipYears = detailItem.mode === "since" && detailItem.recurrence === "annual" ? completedYearsSince(detailItem.target) : null;
           const daysToNextAnniversary = detailItem.mode === "since" && detailItem.recurrence === "annual" ? daysUntilAnnual(detailItem.target) : null;
+          const birthdayAge = detailItem.category === "birthday" && detailItem.recurrence === "annual" ? birthdayAgeOnNextOccurrence(detailItem.target) : null;
           return (
             <div className="ld-detail-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setDetailId(null); setEditingDetail(false); } }}>
               <article className="ld-detail-view" role="dialog" aria-modal="true" aria-label={detailItem.title}>
@@ -1012,15 +1018,24 @@ export default function LittleDaysApp() {
                       <p>{detailItem.recurrence === "annual" ? "Every year · " + prettyDate(detailNextDate) : prettyDate(detailItem.target)}</p>
                     </div>
 
-                    <div className={"ld-detail-number " + (relationshipYears !== null ? "relationship-number" : "")}>
-                      <strong>{relationshipYears !== null ? relationshipYears : detailDays}</strong>
-                      <span>{relationshipYears !== null ? (relationshipYears === 1 ? "year together" : "years together") : (detailItem.mode === "until" ? "days until" : "days since")}</span>
+                    <div className={"ld-detail-number " + (relationshipYears !== null || birthdayAge !== null ? "relationship-number" : "")}>
+                      <strong>{birthdayAge !== null ? birthdayAge : relationshipYears !== null ? relationshipYears : detailDays}</strong>
+                      <span>{birthdayAge !== null ? "years old on this birthday" : relationshipYears !== null ? (relationshipYears === 1 ? "year together" : "years together") : (detailItem.mode === "until" ? "days until" : "days since")}</span>
                     </div>
                     {relationshipYears !== null && (
                       <div className="ld-anniversary-strip">
                         <div>
                           <span className="ld-eyebrow">next anniversary</span>
                           <strong>{daysToNextAnniversary === 0 ? "Today." : daysToNextAnniversary + " days away"}</strong>
+                        </div>
+                        <span>{prettyDate(detailNextDate)}</span>
+                      </div>
+                    )}
+                    {birthdayAge !== null && (
+                      <div className="ld-anniversary-strip birthday-strip">
+                        <div>
+                          <span className="ld-eyebrow">next birthday</span>
+                          <strong>{daysUntilAnnual(detailItem.target) === 0 ? "Today." : "Turns " + birthdayAge}</strong>
                         </div>
                         <span>{prettyDate(detailNextDate)}</span>
                       </div>
