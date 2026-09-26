@@ -422,7 +422,7 @@ export default function LittleDaysApp() {
 
         const { data, error } = await supabase.from("time_items")
           .insert({ user_id: userData.user.id, title, target_date: target, mode, category, note })
-          .select("id,title,target_date,mode")
+          .select("id,title,target_date,mode,category,note")
           .single();
 
         if (!error && data) {
@@ -448,7 +448,10 @@ export default function LittleDaysApp() {
         } else if (error) {
           throw error;
         }
-        saveJson(STORAGE_KEY, items);
+        setItems((current) => {
+          saveJson(STORAGE_KEY, current);
+          return current;
+        });
       }
 
       setShowAdd(false);
@@ -788,7 +791,7 @@ export default function LittleDaysApp() {
   required
 /></label>}
               </div>
-              {addMode !== "habit" && <div className="ld-form-grid ld-note-row"><label><span className="ld-form-label">What makes it matter?</span><textarea className="ld-input ld-textarea" name="note" placeholder="A small note, place, plan, or memory…" rows={3} /></label><label><span className="ld-form-label">Kind</span><select className="ld-input" name="category" defaultValue={selectedTemplateData.id === "trip" ? "travel" : selectedTemplateData.id === "anniversary" ? "love" : selectedTemplateData.mode === "since" ? "memory" : selectedTemplateData.id}><option value="life">Life</option><option value="travel">Travel</option><option value="love">Love</option><option value="memory">Memory</option><option value="holiday">Holiday</option><option value="milestone">Milestone</option></select></label></div>}
+              {addMode !== "habit" && <div className="ld-form-grid ld-note-row"><label><span className="ld-form-label">What makes it matter?</span><textarea className="ld-input ld-textarea" name="note" placeholder="A small note, place, plan, or memory…" rows={3} /></label><label><span className="ld-form-label">Kind</span><select className="ld-input" name="category" defaultValue={selectedTemplateData.id === "trip" ? "travel" : selectedTemplateData.id === "anniversary" ? "love" : selectedTemplateData.id === "holiday" ? "holiday" : selectedTemplateData.mode === "since" ? "memory" : selectedTemplateData.id === "milestone" ? "milestone" : "life"}><option value="life">Life</option><option value="travel">Travel</option><option value="love">Love</option><option value="memory">Memory</option><option value="holiday">Holiday</option><option value="milestone">Milestone</option></select></label></div>}
               {addMode === "habit" && <div className="ld-form-grid"><label><span className="ld-form-label">Frequency</span><select className="ld-input" name="frequency" defaultValue="daily"><option value="daily">Every day</option><option value="weekdays">Weekdays</option></select></label><label><span className="ld-form-label">Symbol</span><input className="ld-input" name="icon" defaultValue="○" maxLength={2} /></label></div>}
               <div className="ld-modal-actions"><button type="button" className="ld-secondary" onClick={() => setShowAdd(false)}>Not now</button><button className="ld-primary" type="submit" disabled={busy}>{busy ? "Saving…" : addMode === "habit" ? "Plant habit" : addMode === "since" ? "Remember it" : "Keep it"}</button></div>
             </form>
