@@ -1001,3 +1001,14 @@
 .ld-form-context div{display:grid;gap:3px}
 .ld-form-context strong{font-size:11px}
 .ld-form-context span{color:var(--ld-muted);font-size:8px}
+
+
+/* --- Personal date on the home surface --- */
+.ld-personal-card{position:relative;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;margin-top:26px;padding:17px 18px;border:1px solid rgba(163,108,112,.16);border-radius:23px;background:linear-gradient(105deg,#f5e9e6 0%,#f8f3e8 100%)}
+.ld-personal-orbit{width:48px;height:48px;display:grid;place-items:center;border-radius:50%;background:rgba(255,253,248,.72);box-shadow:0 0 0 8px rgba(255,253,248,.32)}
+.ld-personal-orbit span{color:#9d6d70;font-size:20px}
+.ld-personal-copy{display:grid;gap:3px}
+.ld-personal-copy h2{margin:1px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:24px;line-height:1;font-weight:500;letter-spacing:-.045em}
+.ld-personal-copy p{margin:2px 0 0;color:#887a76;font-size:9px}
+.ld-personal-card>button{border:0;border-radius:999px;padding:9px 12px;background:rgba(255,253,248,.78);color:#765d5d;font:inherit;font-size:9px;font-weight:800}
+@media(max-width:560px){.ld-personal-card{grid-template-columns:auto 1fr;gap:13px}.ld-personal-card>button{grid-column:2;justify-self:start}.ld-personal-copy h2{font-size:21px}}
