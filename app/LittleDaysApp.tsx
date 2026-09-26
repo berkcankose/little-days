@@ -577,7 +577,7 @@ export default function LittleDaysApp() {
 
         const { data, error } = await supabase.from("time_items")
           .insert({ user_id: userData.user.id, title, target_date: target, mode, category, note, recurrence })
-          .select("id,title,target_date,mode,category,note")
+          .select("id,title,target_date,mode,category,note,recurrence")
           .single();
 
         if (!error && data) {
