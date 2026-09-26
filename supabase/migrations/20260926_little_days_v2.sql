@@ -30,6 +30,33 @@ create table if not exists public.habit_logs (
   unique (habit_id, log_date)
 );
 
+
+create table if not exists public.daily_marks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  mark_date date not null,
+  completed_at timestamptz not null default now(),
+  unique (user_id, mark_date)
+);
+
+alter table public.daily_marks enable row level security;
+
+drop policy if exists "Users can manage their own daily marks" on public.daily_marks;
+create policy "Users can manage their own daily marks"
+on public.daily_marks
+for all
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+create index if not exists daily_marks_user_date_idx on public.daily_marks(user_id, mark_date);
+
+insert into public.daily_marks (user_id, mark_date, completed_at)
+select c.user_id, c.check_date, min(c.completed_at)
+from public.check_ins c
+group by c.user_id, c.check_date
+on conflict (user_id, mark_date) do nothing;
+
 alter table public.time_items enable row level security;
 alter table public.habit_items enable row level security;
 alter table public.habit_logs enable row level security;
