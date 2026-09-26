@@ -80,7 +80,8 @@ export default function Home() {
   const [view, setView] = useState<"today" | "track" | "garden">("today");
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);\n  const [cloudHabitsReady, setCloudHabitsReady] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [cloudHabitsReady, setCloudHabitsReady] = useState(false);
 
   const active = items.find((item) => item.id === activeId) ?? items[0];
   const progress = useMemo(yearProgress, []);
