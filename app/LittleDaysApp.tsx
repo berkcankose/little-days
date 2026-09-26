@@ -123,6 +123,24 @@ function nextAnnualDate(target: string) {
   return dateKey(annualOccurrence(target));
 }
 
+function relationshipChapter(startTarget: string, memoryDate: string) {
+  const start = parseDate(startTarget);
+  const memory = parseDate(memoryDate);
+  if (memory < start) return { key: "before", label: "Before we married", index: 0, current: false };
+
+  let years = memory.getFullYear() - start.getFullYear();
+  const anniversary = new Date(start.getFullYear() + years, start.getMonth(), start.getDate());
+  if (anniversary > memory) years -= 1;
+
+  const index = Math.max(1, years + 1);
+  return {
+    key: "year-" + index,
+    label: index === 1 ? "Our first year" : "Year " + index,
+    index,
+    current: false,
+  };
+}
+
 function prettyDate(target: string) {
   return new Intl.DateTimeFormat("en", { month: "long", day: "numeric", year: "numeric" }).format(parseDate(target));
 }
@@ -1081,6 +1099,21 @@ export default function LittleDaysApp() {
           const relationshipYears = detailItem.mode === "since" && detailItem.recurrence === "annual" ? completedYearsSince(detailItem.target) : null;
           const daysToNextAnniversary = detailItem.mode === "since" && detailItem.recurrence === "annual" ? daysUntilAnnual(detailItem.target) : null;
           const birthdayAge = detailItem.category === "birthday" && detailItem.recurrence === "annual" ? birthdayAgeOnNextOccurrence(detailItem.target) : null;
+          const detailMemories = memoriesByItem[detailItem.id] ?? [];
+          const relationshipChapterMap = new Map<string, { key: string; label: string; index: number; current: boolean; memories: ItemMemory[] }>();
+          if (relationshipYears !== null) {
+            detailMemories.forEach((memory) => {
+              const chapter = relationshipChapter(detailItem.target, memory.memoryDate);
+              const existing = relationshipChapterMap.get(chapter.key);
+              if (existing) existing.memories.push(memory);
+              else relationshipChapterMap.set(chapter.key, { ...chapter, current: chapter.index === relationshipYears + 1, memories: [memory] });
+            });
+          }
+          const relationshipChapters = Array.from(relationshipChapterMap.values()).sort((a, b) => b.index - a.index);
+          const lastAnniversaryDate = relationshipYears !== null
+            ? dateKey(new Date(parseDate(detailItem.target).getFullYear() + relationshipYears, parseDate(detailItem.target).getMonth(), parseDate(detailItem.target).getDate()))
+            : null;
+          const daysIntoCurrentChapter = lastAnniversaryDate ? daysSince(lastAnniversaryDate) : null;
           return (
             <div className="ld-detail-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setDetailId(null); setEditingDetail(false); } }}>
               <article className="ld-detail-view" role="dialog" aria-modal="true" aria-label={detailItem.title}>
@@ -1170,7 +1203,7 @@ export default function LittleDaysApp() {
                     {relationshipYears !== null && (
                       <div className="ld-relationship-stats">
                         <div><strong>{detailDays.toLocaleString()}</strong><span>days married</span></div>
-                        <div><strong>{Math.max(0, 365 - daysToNextAnniversary!)}</strong><span>days in this year together</span></div>
+                        <div><strong>{daysIntoCurrentChapter?.toLocaleString() ?? 0}</strong><span>days into year {relationshipYears + 1}</span></div>
                         <div><strong>{relationshipYears + 1}</strong><span>next chapter</span></div>
                       </div>
                     )}
@@ -1196,21 +1229,51 @@ export default function LittleDaysApp() {
                         <span>{(memoriesByItem[detailItem.id] ?? []).length}</span>
                       </div>
 
-                      {(memoriesByItem[detailItem.id] ?? []).length > 0 && (
-                        <div className="ld-memory-strip">
-                          {(memoriesByItem[detailItem.id] ?? []).map((memory) => (
-                            <figure key={memory.id} className="ld-memory-photo">
-                              <button type="button" className="ld-memory-image-button" onClick={() => setLightboxMemory(memory)} aria-label={"Open " + (memory.caption || "memory photo")}>
-                                {memory.photoUrl ? <img src={memory.photoUrl} alt={memory.caption || "A memory"} /> : <div className="ld-memory-photo-placeholder">✿</div>}
-                              </button>
-                              <figcaption>
-                                <span>{shortDate(memory.memoryDate)}</span>
-                                <strong>{memory.caption || "A quiet moment."}</strong>
-                                <button type="button" onClick={() => deleteMemory(memory)}>Remove</button>
-                              </figcaption>
-                            </figure>
-                          ))}
-                        </div>
+                      {detailMemories.length > 0 && (
+                        relationshipYears !== null ? (
+                          <div className="ld-memory-chapters">
+                            {relationshipChapters.map((chapter) => (
+                              <section className={"ld-memory-chapter " + (chapter.current ? "current" : "")} key={chapter.key}>
+                                <div className="ld-memory-chapter-head">
+                                  <div>
+                                    <span className="ld-eyebrow">chapter</span>
+                                    <h4>{chapter.label}</h4>
+                                  </div>
+                                  <span>{chapter.memories.length} {chapter.memories.length === 1 ? "moment" : "moments"}</span>
+                                </div>
+                                <div className="ld-memory-strip">
+                                  {chapter.memories.map((memory) => (
+                                    <figure key={memory.id} className="ld-memory-photo">
+                                      <button type="button" className="ld-memory-image-button" onClick={() => setLightboxMemory(memory)} aria-label={"Open " + (memory.caption || "memory photo")}>
+                                        {memory.photoUrl ? <img src={memory.photoUrl} alt={memory.caption || "A memory"} /> : <div className="ld-memory-photo-placeholder">✿</div>}
+                                      </button>
+                                      <figcaption>
+                                        <span>{shortDate(memory.memoryDate)}</span>
+                                        <strong>{memory.caption || "A quiet moment."}</strong>
+                                        <button type="button" onClick={() => deleteMemory(memory)}>Remove</button>
+                                      </figcaption>
+                                    </figure>
+                                  ))}
+                                </div>
+                              </section>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="ld-memory-strip">
+                            {detailMemories.map((memory) => (
+                              <figure key={memory.id} className="ld-memory-photo">
+                                <button type="button" className="ld-memory-image-button" onClick={() => setLightboxMemory(memory)} aria-label={"Open " + (memory.caption || "memory photo")}>
+                                  {memory.photoUrl ? <img src={memory.photoUrl} alt={memory.caption || "A memory"} /> : <div className="ld-memory-photo-placeholder">✿</div>}
+                                </button>
+                                <figcaption>
+                                  <span>{shortDate(memory.memoryDate)}</span>
+                                  <strong>{memory.caption || "A quiet moment."}</strong>
+                                  <button type="button" onClick={() => deleteMemory(memory)}>Remove</button>
+                                </figcaption>
+                              </figure>
+                            ))}
+                          </div>
+                        )
                       )}
 
                       <form className="ld-memory-add" onSubmit={(event) => {
