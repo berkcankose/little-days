@@ -80,7 +80,7 @@ export default function Home() {
   const [view, setView] = useState<"today" | "track" | "garden">("today");
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false);\n  const [cloudHabitsReady, setCloudHabitsReady] = useState(false);
 
   const active = items.find((item) => item.id === activeId) ?? items[0];
   const progress = useMemo(yearProgress, []);
@@ -115,6 +115,31 @@ export default function Home() {
         const localLogs = loadJson<Record<string, string[]>>(HABIT_LOGS_KEY, {});
         setHabits(localHabits);
         setHabitLogs(localLogs);
+
+        const { data: cloudHabits, error: habitError } = await supabase
+          .from("habit_items")
+          .select("id,title,frequency,icon")
+          .order("created_at", { ascending: true });
+
+        if (!habitError && cloudHabits) {
+          setCloudHabitsReady(true);
+          setHabits(cloudHabits.map((habit) => ({
+            id: habit.id,
+            title: habit.title,
+            frequency: habit.frequency === "weekdays" ? "weekdays" : "daily",
+            icon: habit.icon || "○",
+          })));
+
+          const { data: cloudLogs } = await supabase
+            .from("habit_logs")
+            .select("habit_id,log_date");
+
+          const nextLogs: Record<string, string[]> = {};
+          (cloudLogs ?? []).forEach((log) => {
+            nextLogs[log.habit_id] = [...(nextLogs[log.habit_id] ?? []), log.log_date];
+          });
+          setHabitLogs(nextLogs);
+        }
 
         const { data: timeData, error: timeError } = await supabase
           .from("time_items")
@@ -260,19 +285,21 @@ export default function Home() {
       const user = userData.user;
       if (!user) throw new Error("Your session has expired.");
 
-      if (!complete) {
-        const { error } = await supabase.from("habit_logs").upsert(
-          { habit_id: id, user_id: user.id, log_date: todayKey },
-          { onConflict: "habit_id,log_date" },
-        );
-        if (error && !error.message.includes("habit_logs")) throw error;
-      } else {
-        const { error } = await supabase
-          .from("habit_logs")
-          .delete()
-          .eq("habit_id", id)
-          .eq("log_date", todayKey);
-        if (error && !error.message.includes("habit_logs")) throw error;
+      if (cloudHabitsReady) {
+        if (!complete) {
+          const { error } = await supabase.from("habit_logs").upsert(
+            { habit_id: id, user_id: user.id, log_date: todayKey },
+            { onConflict: "habit_id,log_date" },
+          );
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("habit_logs")
+            .delete()
+            .eq("habit_id", id)
+            .eq("log_date", todayKey);
+          if (error) throw error;
+        }
       }
     } catch (error) {
       setHabitLogs((current) => ({ ...current, [id]: previous }));
@@ -306,14 +333,17 @@ export default function Home() {
         const temp: Habit = { id: crypto.randomUUID(), title, frequency, icon };
         setHabits((current) => [...current, temp]);
 
-        const { data, error } = await supabase
-          .from("habit_items")
-          .insert({ user_id: user.id, title, frequency, icon })
-          .select("id,title,frequency,icon")
-          .single();
+        if (cloudHabitsReady) {
+          const { data, error } = await supabase
+            .from("habit_items")
+            .insert({ user_id: user.id, title, frequency, icon })
+            .select("id,title,frequency,icon")
+            .single();
 
-        if (!error && data) {
-          setHabits((current) => current.map((item) => item.id === temp.id ? { ...item, id: data.id } : item));
+          if (error) throw error;
+          if (data) {
+            setHabits((current) => current.map((item) => item.id === temp.id ? { ...item, id: data.id } : item));
+          }
         }
 
         setShowAdd(false);
