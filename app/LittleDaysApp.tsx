@@ -1167,6 +1167,14 @@ export default function LittleDaysApp() {
                       </section>
                     )}
 
+                    {relationshipYears !== null && (
+                      <div className="ld-relationship-stats">
+                        <div><strong>{detailDays.toLocaleString()}</strong><span>days married</span></div>
+                        <div><strong>{Math.max(0, 365 - daysToNextAnniversary!)}</strong><span>days in this year together</span></div>
+                        <div><strong>{relationshipYears + 1}</strong><span>next chapter</span></div>
+                      </div>
+                    )}
+
                     <div className="ld-detail-progress">
                       <div className="ld-detail-progress-line">
                         <span className={detailItem.mode === "since" ? "filled" : ""} />
