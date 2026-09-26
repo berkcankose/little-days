@@ -1132,6 +1132,41 @@ export default function LittleDaysApp() {
                       </div>
                     )}
 
+                    {relationshipYears !== null && (
+                      <section className="ld-relationship-story">
+                        <div className="ld-relationship-story-head">
+                          <div>
+                            <span className="ld-eyebrow">your story</span>
+                            <h3>Since the day you chose each other.</h3>
+                          </div>
+                          <span className="ld-relationship-start">{prettyDate(detailItem.target)}</span>
+                        </div>
+                        <div className="ld-relationship-line">
+                          <div className="ld-relationship-start-dot">♡</div>
+                          {Array.from({ length: Math.max(0, relationshipYears) }, (_, index) => index + 1).map((year) => {
+                            const start = parseDate(detailItem.target);
+                            const milestoneDate = dateKey(new Date(start.getFullYear() + year, start.getMonth(), start.getDate()));
+                            const isCurrent = year === relationshipYears;
+                            return (
+                              <div className={"ld-relationship-milestone " + (isCurrent ? "current" : "")} key={year}>
+                                <span>{isCurrent ? "now" : "year " + year}</span>
+                                <strong>{year}</strong>
+                                <small>{shortDate(milestoneDate)}</small>
+                              </div>
+                            );
+                          })}
+                          <div className="ld-relationship-next">
+                            <span>next</span>
+                            <strong>{relationshipYears + 1}</strong>
+                            <small>{shortDate(detailNextDate)}</small>
+                          </div>
+                        </div>
+                        <p className="ld-relationship-caption">
+                          {relationshipYears === 0 ? "Your story has just begun." : relationshipYears === 1 ? "One year of marriage, with many more days still ahead." : relationshipYears + " years married — and still becoming a shared history."}
+                        </p>
+                      </section>
+                    )}
+
                     <div className="ld-detail-progress">
                       <div className="ld-detail-progress-line">
                         <span className={detailItem.mode === "since" ? "filled" : ""} />
