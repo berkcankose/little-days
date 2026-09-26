@@ -993,3 +993,11 @@
 
 .birthday-strip{background:#f2ead9;border-color:rgba(156,109,68,.16)}
 .birthday-strip strong{color:#805d3f}
+
+
+/* --- Contextual creation forms --- */
+.ld-form-context{display:flex;align-items:center;gap:13px;margin:0 0 21px;padding:13px 15px;border:1px solid var(--ld-line);border-radius:17px;background:rgba(246,244,237,.72)}
+.ld-context-icon{width:37px;height:37px;display:grid;place-items:center;border-radius:12px;background:var(--ld-green-soft);color:var(--ld-green);font-size:18px}
+.ld-form-context div{display:grid;gap:3px}
+.ld-form-context strong{font-size:11px}
+.ld-form-context span{color:var(--ld-muted);font-size:8px}
