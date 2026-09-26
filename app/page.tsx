@@ -356,7 +356,8 @@ export default function Home() {
     event.preventDefault();
     if (busy) return;
 
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const title = String(form.get("title") || "").trim();
     const target = String(form.get("target") || "");
     const icon = String(form.get("icon") || "○").trim() || "○";
@@ -389,7 +390,7 @@ export default function Home() {
         }
 
         setShowAdd(false);
-        event.currentTarget.reset();
+        formElement.reset();
         flash("A new little habit was planted.");
         return;
       }
@@ -427,7 +428,7 @@ export default function Home() {
       }
 
       setShowAdd(false);
-      event.currentTarget.reset();
+      formElement.reset();
       flash(mode === "since" ? "A little memory was planted." : "A new little day was planted.");
     } catch (error) {
       flash(error instanceof Error ? error.message : "Could not plant that yet.");
