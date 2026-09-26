@@ -7,9 +7,14 @@ create table if not exists public.time_items (
   title text not null,
   target_date date not null,
   mode text not null default 'until' check (mode in ('until', 'since')),
+  category text not null default 'life',
+  note text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.time_items add column if not exists category text not null default 'life';
+alter table public.time_items add column if not exists note text not null default '';
 
 create table if not exists public.habit_items (
   id uuid primary key default gen_random_uuid(),
@@ -112,7 +117,7 @@ for each row execute procedure public.set_little_days_updated_at();
 
 -- Preserve the countdowns already created in v1.
 insert into public.time_items (user_id, title, target_date, mode, created_at, updated_at)
-select c.user_id, c.title, c.target_date, 'until', c.created_at, c.updated_at
+select c.user_id, c.title, c.target_date, 'until', 'life', '', c.created_at, c.updated_at
 from public.countdowns c
 where not exists (
   select 1
