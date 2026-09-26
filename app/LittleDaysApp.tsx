@@ -185,6 +185,7 @@ export default function LittleDaysApp() {
   function itemIcon(item: TimeItem) {
     if (item.category === "travel") return "↗";
     if (item.category === "love") return "♡";
+    if (item.category === "birthday") return "✦";
     if (item.category === "memory") return "✿";
     if (item.category === "holiday") return "☼";
     return "✦";
@@ -872,7 +873,9 @@ export default function LittleDaysApp() {
                 <div className="ld-personal-copy">
                   <span className="ld-eyebrow">{nextPersonalDate.category === "love" ? "for us" : "someone we love"}</span>
                   <h2>{nextPersonalDate.title}</h2>
-                  <p>{daysUntilAnnual(nextPersonalDate.target) === 0 ? "Today is the day." : daysUntilAnnual(nextPersonalDate.target) + " days until " + prettyDate(nextAnnualDate(nextPersonalDate.target)) + "."}</p>
+                  <p>{nextPersonalDate.category === "love"
+                    ? (completedYearsSince(nextPersonalDate.target) + " " + (completedYearsSince(nextPersonalDate.target) === 1 ? "year" : "years") + " together · " + (daysUntilAnnual(nextPersonalDate.target) === 0 ? "today." : daysUntilAnnual(nextPersonalDate.target) + " days to the next one."))
+                    : (daysUntilAnnual(nextPersonalDate.target) === 0 ? "Today is the day." : daysUntilAnnual(nextPersonalDate.target) + " days until " + prettyDate(nextAnnualDate(nextPersonalDate.target)) + ".")}</p>
                 </div>
                 <button type="button" onClick={() => { setActiveId(nextPersonalDate.id); setDetailId(nextPersonalDate.id); }}>Open ↗</button>
               </article>
