@@ -195,14 +195,25 @@ export default function Home() {
         setActiveId(loadedItems[0]?.id ?? "");
 
         if (loadedItems[0]) {
-          const { data: checkIn } = await supabase
-            .from("check_ins")
+          const { data: dailyMark, error: dailyMarkError } = await supabase
+            .from("daily_marks")
             .select("id")
-            .eq("countdown_id", loadedItems[0].id)
-            .eq("check_date", todayKey)
+            .eq("mark_date", todayKey)
             .maybeSingle();
 
-          if (!cancelled) setChecked(Boolean(checkIn));
+          if (!cancelled) {
+            if (!dailyMarkError) {
+              setChecked(Boolean(dailyMark));
+            } else {
+              const { data: legacyCheckIn } = await supabase
+                .from("check_ins")
+                .select("id")
+                .eq("countdown_id", loadedItems[0].id)
+                .eq("check_date", todayKey)
+                .maybeSingle();
+              setChecked(Boolean(legacyCheckIn));
+            }
+          }
         }
 
         saveJson(STORAGE_KEY, loadedItems);
@@ -230,14 +241,25 @@ export default function Home() {
     setActiveId(id);
     setChecked(false);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
+      .from("daily_marks")
+      .select("id")
+      .eq("mark_date", todayKey)
+      .maybeSingle();
+
+    if (!error) {
+      setChecked(Boolean(data));
+      return;
+    }
+
+    const { data: legacy } = await supabase
       .from("check_ins")
       .select("id")
       .eq("countdown_id", id)
       .eq("check_date", todayKey)
       .maybeSingle();
 
-    setChecked(Boolean(data));
+    setChecked(Boolean(legacy));
   }
 
   async function toggleCheckin() {
@@ -251,7 +273,26 @@ export default function Home() {
       const user = userData.user;
       if (!user) throw new Error("Your session has expired.");
 
-      if (!previous) {
+      const { data: dailyMark, error: dailyMarkError } = await supabase
+        .from("daily_marks")
+        .select("id")
+        .eq("mark_date", todayKey)
+        .maybeSingle();
+
+      if (!dailyMarkError) {
+        if (!previous) {
+          const { error } = await supabase.from("daily_marks").upsert(
+            { user_id: user.id, mark_date: todayKey },
+            { onConflict: "user_id,mark_date" },
+          );
+          if (error) throw error;
+          flash("A little mark for today.");
+        } else if (dailyMark) {
+          const { error } = await supabase.from("daily_marks").delete().eq("id", dailyMark.id);
+          if (error) throw error;
+          flash("Today is open again.");
+        }
+      } else if (!previous) {
         const { error } = await supabase.from("check_ins").upsert(
           { countdown_id: active.id, user_id: user.id, check_date: todayKey },
           { onConflict: "countdown_id,check_date" },
