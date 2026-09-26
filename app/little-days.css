@@ -939,3 +939,27 @@
 .ld-detail-edit label{display:grid;gap:7px;margin-top:13px;color:var(--ld-muted);font-size:8px;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
 .ld-detail-edit .ld-input{text-transform:none;letter-spacing:normal;font-weight:400}
 @media(max-width:560px){.ld-detail-backdrop{padding:9px;align-items:end}.ld-detail-view{max-height:calc(100svh - 18px);padding:26px 21px 22px;border-radius:27px}.ld-detail-hero h2{font-size:43px}.ld-detail-number{margin-top:31px}}
+
+
+/* --- Little Day memory wall --- */
+.ld-detail-memories{margin-top:26px;padding-top:23px;border-top:1px solid var(--ld-line)}
+.ld-detail-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:15px}
+.ld-detail-section-head h3{margin:5px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:25px;font-weight:500;letter-spacing:-.05em}
+.ld-detail-section-head>span{color:var(--ld-muted);font-size:9px}
+.ld-memory-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:15px}
+.ld-memory-photo{margin:0;overflow:hidden;border-radius:17px;background:var(--ld-paper-2);border:1px solid var(--ld-line)}
+.ld-memory-photo img,.ld-memory-photo-placeholder{display:block;width:100%;height:150px;object-fit:cover}
+.ld-memory-photo-placeholder{display:grid;place-items:center;color:var(--ld-green);font-size:25px;background:var(--ld-green-soft)}
+.ld-memory-photo figcaption{display:grid;gap:4px;padding:10px 11px}
+.ld-memory-photo figcaption span{color:var(--ld-muted);font-size:7px;text-transform:uppercase;letter-spacing:.08em}
+.ld-memory-photo figcaption strong{font-family:Georgia,"Times New Roman",serif;font-size:12px;font-weight:500;line-height:1.3}
+.ld-memory-photo figcaption button{justify-self:start;border:0;padding:0;background:none;color:#9b706c;font:inherit;font-size:8px}
+.ld-memory-add{display:grid;grid-template-columns:1fr;gap:9px;margin-top:13px;padding:13px;border:1px dashed rgba(82,102,78,.24);border-radius:18px;background:rgba(245,246,239,.55)}
+.ld-memory-upload{position:relative;display:grid;grid-template-columns:34px 1fr;grid-template-rows:auto auto;column-gap:9px;align-items:center;cursor:pointer}
+.ld-memory-upload>span{grid-row:1/3;width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:white;color:var(--ld-green);font-size:18px}
+.ld-memory-upload strong{font-size:10px}
+.ld-memory-upload small{color:var(--ld-muted);font-size:8px}
+.ld-memory-upload input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.ld-memory-fields{display:grid;grid-template-columns:145px 1fr;gap:8px}
+.ld-memory-add>.ld-secondary{justify-self:start;padding:9px 12px}
+@media(max-width:560px){.ld-memory-strip{grid-template-columns:1fr 1fr}.ld-memory-photo img,.ld-memory-photo-placeholder{height:120px}.ld-memory-fields{grid-template-columns:1fr}.ld-memory-add>.ld-secondary{width:100%}}
