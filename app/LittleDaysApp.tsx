@@ -1001,17 +1001,51 @@ export default function LittleDaysApp() {
               <p>Trips, birthdays, plans, deadlines — the little things waiting for you.</p>
               <button className="ld-primary" type="button" onClick={() => openAdd("until")}>+ Keep a date</button>
             </div>
-            <div className="ld-list">
-              {upcoming.length === 0 && <div className="ld-empty-state"><span>✦</span><h2>Nothing ahead yet.</h2><p>Give yourself something to look forward to.</p><button className="ld-primary" onClick={() => openAdd("until")} type="button">Add a date</button></div>}
-              {upcoming.map((item) => (
-                <article className="ld-large-object" key={item.id}>
-                  <button type="button" className="ld-large-object-main" onClick={() => { setActiveId(item.id); setDetailId(item.id); }}>
-                    <span className="ld-large-icon">{itemIcon(item)}</span>
-                    <span><strong>{item.title}</strong><small>{prettyDate(item.target)}</small></span>
-                    <span className="ld-large-value"><strong>{daysUntil(item.target)}</strong><small>days</small></span>
-                  </button>
+            {upcoming.length > 0 && (() => {
+              const nextItem = upcoming[0];
+              const nextDays = nextItem.recurrence === "annual" ? daysUntilAnnual(nextItem.target) : daysUntil(nextItem.target);
+              const nextDate = nextItem.recurrence === "annual" ? nextAnnualDate(nextItem.target) : nextItem.target;
+              return (
+                <article className="ld-ahead-hero">
+                  <div className="ld-ahead-hero-copy">
+                    <span className="ld-eyebrow">next little day</span>
+                    <h2>{nextItem.title}</h2>
+                    <p>{nextItem.recurrence === "annual" ? "It comes around every year." : "Something worth keeping in sight."}</p>
+                    <button type="button" onClick={() => { setActiveId(nextItem.id); setDetailId(nextItem.id); }}>Open this day ↗</button>
+                  </div>
+                  <div className="ld-ahead-hero-date">
+                    <span>{shortDate(nextDate)}</span>
+                    <strong>{nextDays}</strong>
+                    <small>{nextDays === 1 ? "day away" : "days away"}</small>
+                  </div>
+                  <span className="ld-ahead-hero-symbol">{itemIcon(nextItem)}</span>
                 </article>
-              ))}
+              );
+            })()}
+
+            <div className="ld-ahead-list-heading">
+              <div><span className="ld-eyebrow">everything else</span><h2>Waiting for you</h2></div>
+              <span>{upcoming.length} {upcoming.length === 1 ? "date" : "dates"}</span>
+            </div>
+
+            <div className="ld-list ld-ahead-list">
+              {upcoming.length === 0 && <div className="ld-empty-state"><span>✦</span><h2>Nothing ahead yet.</h2><p>Give yourself something to look forward to.</p><button className="ld-primary" onClick={() => openAdd("until")} type="button">Add a date</button></div>}
+              {upcoming.map((item, index) => {
+                const itemDays = item.recurrence === "annual" ? daysUntilAnnual(item.target) : daysUntil(item.target);
+                const itemDate = item.recurrence === "annual" ? nextAnnualDate(item.target) : item.target;
+                return (
+                  <article className={"ld-large-object " + (index === 0 ? "featured" : "")} key={item.id}>
+                    <button type="button" className="ld-large-object-main" onClick={() => { setActiveId(item.id); setDetailId(item.id); }}>
+                      <span className="ld-large-icon">{itemIcon(item)}</span>
+                      <span>
+                        <strong>{item.title}</strong>
+                        <small>{prettyDate(itemDate)}{item.recurrence === "annual" ? " · every year" : ""}</small>
+                      </span>
+                      <span className="ld-large-value"><strong>{itemDays}</strong><small>{itemDays === 1 ? "day" : "days"}</small></span>
+                    </button>
+                  </article>
+                );
+              })}
             </div>
           </section>
         )}
