@@ -507,7 +507,7 @@ export default function LittleDaysApp() {
     [progress.year, progress.total],
   );
 
-  const remainingYearDays = yearDays.slice(Math.max(0, progress.passed - 1));
+  const remainingYearDays = yearDays.slice(progress.passed);
   const yearStartOffset = new Date(progress.year, 0, 1).getDay();
   const fullYearCells = Array.from({ length: 53 * 7 }, (_, index) => {
     const dayIndex = index - yearStartOffset;
