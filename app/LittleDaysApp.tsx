@@ -917,7 +917,7 @@ export default function LittleDaysApp() {
                 {upcoming.slice(0, 3).map((item) => (
                   <button className="ld-object-card" key={item.id} type="button" onClick={() => { setActiveId(item.id); setDetailId(item.id); }}>
                     <span className="ld-object-icon">{itemIcon(item)}</span>
-                    <span><strong>{item.title}</strong><small>{daysUntil(item.target)} days · {shortDate(item.target)}</small></span>
+                    <span><strong>{item.title}</strong><small>{item.recurrence === "annual" ? daysUntilAnnual(item.target) : daysUntil(item.target)} days · {item.recurrence === "annual" ? shortDate(nextAnnualDate(item.target)) : shortDate(item.target)}{item.recurrence === "annual" ? " · every year" : ""}</small></span>
                   </button>
                 ))}
                 <button className="ld-object-card ld-empty-object" type="button" onClick={() => openAdd("until")}>
