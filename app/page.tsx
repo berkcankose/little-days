@@ -98,6 +98,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cloudHabitsReady, setCloudHabitsReady] = useState(false);
+  const [selectedGardenDate, setSelectedGardenDate] = useState<string | null>(null);
 
   const active = items.find((item) => item.id === activeId) ?? items[0];
   const progress = useMemo(yearProgress, []);
@@ -480,7 +481,10 @@ export default function Home() {
   const completedHabits = habits.filter((habit) => (habitLogs[habit.id] ?? []).includes(todayKey)).length;
   const todayMarked = markedDates.includes(todayKey);
   const gardenFlowers = markedDates.length;
-  const gardenDays = Array.from({ length: 56 }, (_, index) => shiftDate(new Date(), index - 48));
+  const gardenDays = Array.from({ length: 49 }, (_, index) => shiftDate(parseDate(todayKey), index - 24));
+  const selectedGarden = selectedGardenDate ? parseDate(selectedGardenDate) : null;
+  const selectedGardenMarked = selectedGardenDate ? markedDates.includes(selectedGardenDate) : false;
+  const selectedGardenIsToday = selectedGardenDate === todayKey;
 
   if (loading) {
     return <main className="app-shell"><div className="app-frame"><div className="card loading-card"><span className="loading-flower">✿</span>Growing your little garden…</div></div></main>;
@@ -584,22 +588,56 @@ export default function Home() {
             <div><div className="card-kicker">your little garden</div><h2>Every day leaves something behind.</h2><p>Past days become flowers. Today is a bud. Tomorrow is still a seed.</p></div>
             <span className="garden-count">{gardenFlowers} marked days</span>
           </div>
+          <div className="garden-legend" aria-label="Garden legend">
+            <span><i className="legend-flower" /> remembered</span>
+            <span><i className="legend-bud" /> today</span>
+            <span><i className="legend-seed" /> ahead</span>
+          </div>
           <div className="garden large" aria-label="Little garden calendar">
             {gardenDays.map((day) => {
               const key = gardenDayKey(day);
               const isMarked = markedDates.includes(key);
               const isToday = key === todayKey;
-              const isFuture = day.getTime() > new Date().setHours(0, 0, 0, 0);
-              const state = isMarked ? "done" : isToday ? "today" : isFuture ? "future" : "past";
+              const isFuture = day.getTime() > parseDate(todayKey).getTime();
+              const state = isToday ? "today" : isMarked ? "done" : isFuture ? "future" : "past";
               const palette = ["rose", "blue", "lavender", "sun", "green"][day.getDate() % 5];
               return (
-                <div className={`flower ${state} flower-${palette}`} key={key} title={`${gardenDateLabel(day)} — ${isMarked ? "marked" : isToday ? "today" : isFuture ? "future" : "not marked"}`}>
+                <button
+                  className={`flower ${state} flower-${palette} ${selectedGardenDate === key ? "selected" : ""}`}
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedGardenDate(key)}
+                  aria-label={`${gardenDateLabel(day)} — ${isToday ? "today" : isMarked ? "marked" : isFuture ? "future" : "not marked"}`}
+                >
                   <span className="flower-number">{gardenDateLabel(day)}</span>
                   <span className="flower-dot" />
-                </div>
+                  {isToday && <span className="flower-today-label">today</span>}
+                </button>
               );
             })}
           </div>
+          {selectedGarden && (
+            <div className="garden-day-detail" aria-live="polite">
+              <div>
+                <span className="card-kicker">{selectedGardenIsToday ? "today" : selectedGardenMarked ? "remembered" : selectedGarden && selectedGarden.getTime() > parseDate(todayKey).getTime() ? "not here yet" : "a quiet day"}</span>
+                <strong>{gardenDateLabel(selectedGarden)}</strong>
+                <p>
+                  {selectedGardenIsToday
+                    ? selectedGardenMarked ? "You noticed today. Keep it small." : "Today is still a bud. You can mark it when you are ready."
+                    : selectedGardenMarked
+                      ? "You marked this day. A little day remembered."
+                      : selectedGarden.getTime() > parseDate(todayKey).getTime()
+                        ? "This day is still waiting for you."
+                        : "No mark was left. That is okay."}
+                </p>
+              </div>
+              {selectedGardenIsToday && (
+                <button className={`check-button ${selectedGardenMarked ? "checked" : ""}`} type="button" onClick={toggleCheckin} disabled={busy}>
+                  {selectedGardenMarked ? "✓ Marked today" : "Mark today"}
+                </button>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="more-strip">
