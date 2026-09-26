@@ -360,6 +360,9 @@
 .ld-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .ld-input { width: 100%; box-sizing: border-box; border: 1px solid var(--ld-line); border-radius: 13px; background: white; color: var(--ld-ink); padding: 12px 13px; outline: none; font: inherit; font-size: 12px; }
 .ld-input:focus { border-color: rgba(82,102,78,.38); box-shadow: 0 0 0 3px rgba(82,102,78,.08); }
+.ld-textarea { resize: vertical; min-height: 82px; line-height: 1.5; }
+.ld-note-row { align-items: start; }
+.ld-note-row label { display: block; }
 .ld-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .ld-modal-footnote { margin: 17px 0 0; color: var(--ld-muted); font-size: 9px; line-height: 1.5; }
 
