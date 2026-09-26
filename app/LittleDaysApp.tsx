@@ -734,6 +734,12 @@ export default function LittleDaysApp() {
     };
   });
 
+  const personalDates = items
+    .filter((item) => item.recurrence === "annual" && (item.category === "love" || item.category === "birthday"))
+    .sort((a, b) => nextAnnualDate(a.target).localeCompare(nextAnnualDate(b.target)));
+
+  const nextPersonalDate = personalDates[0] ?? null;
+
   if (loading) {
     return <main className="ld-shell"><div className="ld-frame"><div className="ld-loading"><span>✿</span><p>Growing your little garden…</p></div></div></main>;
   }
@@ -857,6 +863,20 @@ export default function LittleDaysApp() {
                 </button>
               </div>
             </div>
+
+            {nextPersonalDate && (
+              <article className="ld-personal-card">
+                <div className="ld-personal-orbit">
+                  <span>{itemIcon(nextPersonalDate)}</span>
+                </div>
+                <div className="ld-personal-copy">
+                  <span className="ld-eyebrow">{nextPersonalDate.category === "love" ? "for us" : "someone we love"}</span>
+                  <h2>{nextPersonalDate.title}</h2>
+                  <p>{daysUntilAnnual(nextPersonalDate.target) === 0 ? "Today is the day." : daysUntilAnnual(nextPersonalDate.target) + " days until " + prettyDate(nextAnnualDate(nextPersonalDate.target)) + "."}</p>
+                </div>
+                <button type="button" onClick={() => { setActiveId(nextPersonalDate.id); setDetailId(nextPersonalDate.id); }}>Open ↗</button>
+              </article>
+            )}
 
             <div className="ld-home-lower">
               <article className="ld-card ld-habit-card">
