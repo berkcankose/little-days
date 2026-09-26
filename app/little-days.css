@@ -1178,3 +1178,138 @@
   .ld-since-story-copy h2{font-size:24px}
   .ld-since-story-stats strong{font-size:19px}
 }
+
+
+/* --- Dedicated relationship story surface --- */
+.ld-detail-view.relationship-detail{
+  width:min(820px,100%);
+  max-height:min(900px,calc(100svh - 34px));
+  padding:38px 42px 40px;
+  border-radius:34px;
+}
+.ld-detail-view.relationship-detail .ld-detail-close{
+  position:sticky;
+  float:right;
+  top:0;
+  z-index:5;
+  margin:-8px -8px 0 0;
+}
+.ld-relationship-detail .ld-detail-cover{}
+.relationship-detail .ld-detail-cover{
+  height:255px;
+  margin:-4px 0 30px;
+  border-radius:25px;
+}
+.relationship-detail .ld-detail-hero{
+  position:relative;
+  padding:4px 5px 0;
+}
+.relationship-detail .ld-detail-hero .ld-detail-icon{
+  width:54px;
+  height:54px;
+  margin-bottom:20px;
+  border-radius:17px;
+  background:#f2dfdd;
+  color:#a36c70;
+  font-size:23px;
+}
+.relationship-detail .ld-detail-hero h2{
+  max-width:620px;
+  font-size:clamp(52px,7vw,78px);
+  letter-spacing:-.065em;
+}
+.relationship-detail .ld-detail-hero p{
+  margin-top:8px;
+  font-size:10px;
+  color:#8e7b78;
+}
+.ld-relationship-hero-title{
+  position:absolute;
+  right:0;
+  bottom:1px;
+  color:#a36c70;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.relationship-detail .ld-detail-number{
+  margin:48px 0 19px;
+}
+.relationship-detail .ld-detail-number strong{
+  font-size:clamp(78px,11vw,118px);
+}
+.relationship-detail .ld-detail-number span{
+  font-size:10px;
+}
+.relationship-detail .ld-anniversary-strip{
+  margin-bottom:29px;
+  padding:18px 19px;
+}
+.relationship-detail .ld-relationship-story{
+  margin-bottom:0;
+  padding:25px 23px 20px;
+  border-radius:25px;
+}
+.relationship-detail .ld-relationship-story-head h3{
+  max-width:470px;
+  font-size:29px;
+}
+.relationship-detail .ld-relationship-line{
+  margin-top:30px;
+  min-height:76px;
+}
+.relationship-detail .ld-relationship-caption{
+  max-width:560px;
+  font-size:10px;
+}
+.relationship-detail .ld-relationship-stats{
+  margin:10px 0 29px;
+}
+.relationship-detail .ld-relationship-stats>div{
+  padding:16px 14px;
+  border-radius:17px;
+}
+.relationship-detail .ld-relationship-stats strong{font-size:24px}
+.relationship-detail .ld-detail-progress{
+  padding:21px 0;
+}
+.relationship-detail .ld-detail-note{
+  margin-top:28px;
+  padding:20px 21px;
+  border-radius:20px;
+}
+.relationship-detail .ld-detail-note p{font-size:17px}
+.relationship-detail .ld-detail-memories{
+  margin-top:32px;
+  padding-top:28px;
+}
+.relationship-detail .ld-detail-section-head h3{font-size:29px}
+.relationship-detail .ld-memory-chapters{gap:25px}
+.relationship-detail .ld-memory-chapter.current{
+  padding:19px 17px 15px;
+  border-radius:23px;
+}
+.relationship-detail .ld-memory-photo img,
+.relationship-detail .ld-memory-photo-placeholder{height:175px}
+@media(max-width:700px){
+  .ld-detail-view.relationship-detail{
+    max-height:calc(100svh - 18px);
+    padding:27px 21px 25px;
+    border-radius:28px;
+  }
+  .relationship-detail .ld-detail-close{margin:-4px -3px 0 0}
+  .relationship-detail .ld-detail-cover{height:190px;margin-top:0}
+  .relationship-detail .ld-detail-hero h2{font-size:48px}
+  .relationship-detail .ld-relationship-hero-title{
+    position:static;
+    display:block;
+    margin-top:9px;
+  }
+  .relationship-detail .ld-detail-number{margin-top:35px}
+  .relationship-detail .ld-detail-number strong{font-size:78px}
+  .relationship-detail .ld-relationship-story{padding:19px 16px 16px}
+  .relationship-detail .ld-relationship-story-head h3{font-size:24px}
+  .relationship-detail .ld-memory-photo img,
+  .relationship-detail .ld-memory-photo-placeholder{height:135px}
+}
